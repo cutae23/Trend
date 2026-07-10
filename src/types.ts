@@ -10,6 +10,7 @@ export interface NewsPlace {
   url: string;
   publishDate: string;
   menuSummary: string;
+  addedAt?: string;
 }
 
 export type CategoryFilter = 'all' | 'restaurant' | 'cafe' | 'spot' | 'culture';
