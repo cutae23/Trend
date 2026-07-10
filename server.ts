@@ -615,7 +615,8 @@ app.post("/api/news-places", async (req, res) => {
 // Serve static build in production, otherwise use Vite Dev Server
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
+    const vitePkgName = "vite";
+    const { createServer: createViteServer } = await import(vitePkgName);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
