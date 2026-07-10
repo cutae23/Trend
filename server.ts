@@ -348,6 +348,23 @@ function generateDynamicMockPlaces(
   return items;
 }
 
+// Helper function to enforce a promise timeout
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage = "Timeout"): Promise<T> {
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, ms);
+  });
+  return Promise.race([
+    promise.then((result) => {
+      clearTimeout(timeoutId);
+      return result;
+    }),
+    timeoutPromise
+  ]);
+}
+
 // API Route to fetch places from news using Gemini Search Grounding
 app.post("/api/news-places", async (req, res) => {
   const { query, region, category, customApiKey } = req.body;
@@ -430,22 +447,22 @@ app.post("/api/news-places", async (req, res) => {
     let response;
     let usedSearchGrounding = true;
     let fallbackToNoGrounding = false;
-    let usedModel = "gemini-2.5-flash";
+    let usedModel = "gemini-3.5-flash";
 
     const attempts = [
       {
-        name: "gemini-2.5-flash (Search Grounding)",
-        model: "gemini-2.5-flash",
+        name: "gemini-3.5-flash (Search Grounding)",
+        model: "gemini-3.5-flash",
         grounding: true,
       },
       {
-        name: "gemini-2.5-flash (Standard JSON)",
-        model: "gemini-2.5-flash",
+        name: "gemini-3.5-flash (Standard JSON)",
+        model: "gemini-3.5-flash",
         grounding: false,
       },
       {
-        name: "gemini-2.5-pro (Standard JSON)",
-        model: "gemini-2.5-pro",
+        name: "gemini-3.1-pro-preview (Standard JSON)",
+        model: "gemini-3.1-pro-preview",
         grounding: false,
       }
     ];
@@ -456,63 +473,73 @@ app.post("/api/news-places", async (req, res) => {
         console.log(`[Attempt ${i + 1}/${attempts.length}] Calling Gemini API with model: ${attempt.model} (${attempt.grounding ? "Grounding" : "Standard"})`);
         
         if (attempt.grounding) {
-          response = await activeAi.models.generateContent({
-            model: attempt.model,
-            contents: prompt,
-            config: {
-              systemInstruction: "You are a professional South Korean geographic data extractor. Your job is to search the web using googleSearch tool to find actual, highly-trending, newly featured hotspots or eateries in Korean news articles, extract their real addresses, look up or calculate their precise latitude and longitude. Always answer in Korean. Return your response strictly as a valid JSON array of objects conforming to the requested schema. Return ONLY the JSON array wrapped inside a single ```json and ``` code block. Do not include any conversational intro, outro, or additional explanations outside the code block.\n\n" +
-                "Expected Object Schema:\n" +
-                "{\n" +
-                "  \"id\": \"unique string id (e.g. place_1)\",\n" +
-                "  \"name\": \"Name of the venue\",\n" +
-                "  \"category\": \"one of: 'restaurant', 'cafe', 'spot', 'culture'\",\n" +
-                "  \"newsTitle\": \"Real recent news headline mentioning this place\",\n" +
-                "  \"newsSummary\": \"1-2 sentence summary of what the news reported\",\n" +
-                "  \"address\": \"The full official South Korean address\",\n" +
-                "  \"latitude\": number (between 33.0 and 39.0),\n" +
-                "  \"longitude\": number (between 124.0 and 132.0),\n" +
-                "  \"url\": \"The exact news article link or search portal link\",\n" +
-                "  \"publishDate\": \"Approximate news publication date\",\n" +
-                "  \"menuSummary\": \"Specialty or core featured items\"\n" +
-                "}",
-              tools: [{ googleSearch: {} }]
-            }
-          });
+          // Grant search grounding a tight timeout of 6.5s to fit in Vercel's 10s limit
+          response = await withTimeout(
+            activeAi.models.generateContent({
+              model: attempt.model,
+              contents: prompt,
+              config: {
+                systemInstruction: "You are a professional South Korean geographic data extractor. Your job is to search the web using googleSearch tool to find actual, highly-trending, newly featured hotspots or eateries in Korean news articles, extract their real addresses, look up or calculate their precise latitude and longitude. Always answer in Korean. Return your response strictly as a valid JSON array of objects conforming to the requested schema. Return ONLY the JSON array wrapped inside a single ```json and ``` code block. Do not include any conversational intro, outro, or additional explanations outside the code block.\n\n" +
+                  "Expected Object Schema:\n" +
+                  "{\n" +
+                  "  \"id\": \"unique string id (e.g. place_1)\",\n" +
+                  "  \"name\": \"Name of the venue\",\n" +
+                  "  \"category\": \"one of: 'restaurant', 'cafe', 'spot', 'culture'\",\n" +
+                  "  \"newsTitle\": \"Real recent news headline mentioning this place\",\n" +
+                  "  \"newsSummary\": \"1-2 sentence summary of what the news reported\",\n" +
+                  "  \"address\": \"The full official South Korean address\",\n" +
+                  "  \"latitude\": number (between 33.0 and 39.0),\n" +
+                  "  \"longitude\": number (between 124.0 and 132.0),\n" +
+                  "  \"url\": \"The exact news article link or search portal link\",\n" +
+                  "  \"publishDate\": \"Approximate news publication date\",\n" +
+                  "  \"menuSummary\": \"Specialty or core featured items\"\n" +
+                  "}",
+                tools: [{ googleSearch: {} }]
+              }
+            }),
+            6500,
+            "Search grounding attempt timed out to prevent Vercel 10s serverless function timeout limit."
+          );
           usedSearchGrounding = true;
           fallbackToNoGrounding = false;
         } else {
-          response = await activeAi.models.generateContent({
-            model: attempt.model,
-            contents: prompt,
-            config: {
-              systemInstruction: "You are a professional South Korean geographic data extractor. Extract actual, highly-trending, newly featured hotspots or eateries in Korean news articles from your knowledge base, extract their real addresses, look up or calculate their precise latitude and longitude, and map them to the structured JSON schema. Always answer in Korean. Return a valid JSON array of objects conforming to the provided schema.",
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.ARRAY,
-                description: "List of highly trending hotspots extracted from recent news",
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING, description: "Unique string id (e.g., place_1, place_2)" },
-                    name: { type: Type.STRING, description: "Name of the restaurant, cafe, or venue" },
-                    category: { 
-                      type: Type.STRING, 
-                      description: "Must be one of: 'restaurant', 'cafe', 'spot', 'culture'" 
+          // Grant standard JSON generation a timeout of 5.0s
+          response = await withTimeout(
+            activeAi.models.generateContent({
+              model: attempt.model,
+              contents: prompt,
+              config: {
+                systemInstruction: "You are a professional South Korean geographic data extractor. Extract actual, highly-trending, newly featured hotspots or eateries in Korean news articles from your knowledge base, extract their real addresses, look up or calculate their precise latitude and longitude, and map them to the structured JSON schema. Always answer in Korean. Return a valid JSON array of objects conforming to the provided schema.",
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.ARRAY,
+                  description: "List of highly trending hotspots extracted from recent news",
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.STRING, description: "Unique string id (e.g., place_1, place_2)" },
+                      name: { type: Type.STRING, description: "Name of the restaurant, cafe, or venue" },
+                      category: { 
+                        type: Type.STRING, 
+                        description: "Must be one of: 'restaurant', 'cafe', 'spot', 'culture'" 
+                      },
+                      newsTitle: { type: Type.STRING, description: "Real or highly relevant recent news headline mentioning this place" },
+                      newsSummary: { type: Type.STRING, description: "1-2 sentence summary of what the news article reported about this place" },
+                      address: { type: Type.STRING, description: "The full official South Korean address (Road-name or Jibun)" },
+                      latitude: { type: Type.NUMBER, description: "Latitude of the place in South Korea (between 33.0 and 39.0)" },
+                      longitude: { type: Type.NUMBER, description: "Longitude of the place in South Korea (between 124.0 and 132.0)" },
+                      url: { type: Type.STRING, description: "The exact news article URL, Naver Search URL, or source link" },
+                      publishDate: { type: Type.STRING, description: "Approximate news publication date (e.g. 2026-07-05)" },
+                      menuSummary: { type: Type.STRING, description: "Specialty, core menu, or featured items" }
                     },
-                    newsTitle: { type: Type.STRING, description: "Real or highly relevant recent news headline mentioning this place" },
-                    newsSummary: { type: Type.STRING, description: "1-2 sentence summary of what the news article reported about this place" },
-                    address: { type: Type.STRING, description: "The full official South Korean address (Road-name or Jibun)" },
-                    latitude: { type: Type.NUMBER, description: "Latitude of the place in South Korea (between 33.0 and 39.0)" },
-                    longitude: { type: Type.NUMBER, description: "Longitude of the place in South Korea (between 124.0 and 132.0)" },
-                    url: { type: Type.STRING, description: "The exact news article URL, Naver Search URL, or source link" },
-                    publishDate: { type: Type.STRING, description: "Approximate news publication date (e.g. 2026-07-05)" },
-                    menuSummary: { type: Type.STRING, description: "Specialty, core menu, or featured items" }
-                  },
-                  required: ["id", "name", "category", "newsTitle", "newsSummary", "address", "latitude", "longitude", "url", "menuSummary"]
+                    required: ["id", "name", "category", "newsTitle", "newsSummary", "address", "latitude", "longitude", "url", "menuSummary"]
+                  }
                 }
               }
-            }
-          });
+            }),
+            5000,
+            "Standard generation attempt timed out."
+          );
           usedSearchGrounding = false;
           fallbackToNoGrounding = true;
         }
