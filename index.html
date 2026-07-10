@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>인기 뉴스 맛집 지도 - 실시간 AI 뉴스 분석</title>
+    <!-- Leaflet CSS for Map rendering -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+      /* Ensure proper styling for Leaflet custom marker popups and map container */
+      .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+        padding: 4px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      }
+      .leaflet-popup-content {
+        margin: 8px 12px;
+        font-family: inherit;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+    <!-- Leaflet JS for Map rendering -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
