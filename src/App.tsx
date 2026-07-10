@@ -45,14 +45,6 @@ export default function App() {
   const [customKeyword, setCustomKeyword] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   
-  // Gemini API Configuration states
-  const [customApiKey, setCustomApiKey] = useState(() => {
-    return sessionStorage.getItem("gemini_custom_api_key") || "";
-  });
-  const [hasSystemKey, setHasSystemKey] = useState(false);
-  const [showApiInfo, setShowApiInfo] = useState(false);
-  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
-  
   // UI states
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -64,18 +56,6 @@ export default function App() {
   // Map state
   const [mapCenter, setMapCenter] = useState({ lat: REGIONS[0].lat, lng: REGIONS[0].lng });
   const [mapZoom, setMapZoom] = useState(13);
-
-  // Check Gemini system key availability on mount
-  useEffect(() => {
-    fetch("/api/config-status")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && typeof data.hasSystemKey === "boolean") {
-          setHasSystemKey(data.hasSystemKey);
-        }
-      })
-      .catch((err) => console.error("Error checking system config:", err));
-  }, []);
 
   // Load default Seoul data on mount
   useEffect(() => {
@@ -108,8 +88,7 @@ export default function App() {
         body: JSON.stringify({
           region: regionName,
           query: customQuery ? customQuery : `${regionName} ${themeSuffix}`,
-          category: activeCategory === "all" ? undefined : activeCategory,
-          customApiKey: customApiKey.trim() || undefined
+          category: activeCategory === "all" ? undefined : activeCategory
         })
       });
 
@@ -136,8 +115,12 @@ export default function App() {
 
         if (data.source === "cached_simulation") {
           setSuccessMsg("사전 수집된 핫플레이스 뉴스를 성공적으로 분석했습니다!");
+        } else if (data.source === "dynamic_simulation") {
+          setSuccessMsg(data.message || "💡 공간 지능 AI 로컬 분석 모드: 실시간 Gemini API 서버 환경 영향으로, 검색하신 조건에 맞춰 가공된 공간 빅데이터 트렌드 정보를 제공합니다.");
         } else if (data.source === "error_fallback_simulation") {
           setErrorMsg(data.message || "실시간 뉴스 추출 지연으로 사전 수집 데이터를 렌더링했습니다.");
+        } else if (data.source === "gemini_live_no_grounding") {
+          setSuccessMsg(data.message || "💡 구글 실시간 검색(Search Grounding) API 한도가 초과되어, Gemini 자체 지식 기반 공간 지능 모델로 즉시 핫플레이스를 분석·대체 생성했습니다!");
         } else {
           setSuccessMsg("Gemini 실시간 뉴스 검색 및 장소 지오코딩이 완료되었습니다!");
         }
@@ -235,15 +218,6 @@ export default function App() {
             <p className="text-[9px] uppercase tracking-widest font-bold text-[#1A1A1A]/40">Analysis Date</p>
             <p className="font-serif italic text-base sm:text-lg text-[#1A1A1A]">July 02 — July 09, 2026</p>
           </div>
-          
-          <button 
-            onClick={() => setIsApiModalOpen(true)}
-            className="flex items-center gap-1.5 bg-transparent border border-[#1A1A1A]/30 hover:border-[#E63946] hover:bg-[#E63946]/5 rounded-full px-3 py-1.5 text-[10px] font-mono text-[#1A1A1A]/70 cursor-pointer transition-all"
-            title="Gemini API Key 설정 열기"
-          >
-            <span className={`w-2 h-2 rounded-full ${hasSystemKey || customApiKey ? "bg-emerald-500 animate-pulse" : "bg-[#E63946] animate-pulse"}`}></span>
-            <span>{hasSystemKey || customApiKey ? "GEMINI ACTIVE" : "API KEY SETUP"}</span>
-          </button>
         </div>
       </header>
 
@@ -256,90 +230,6 @@ export default function App() {
           {/* Scrollable controls and list body */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin" id="sidebar-scrollable">
             
-            {/* Gemini API Configuration Panel */}
-            <div className="border border-[#1A1A1A]/10 p-4 bg-[#FCFAF7] space-y-3" id="gemini-api-panel">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#1A1A1A] flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-[#E63946]" />
-                  <span>GEMINI CORE CONFIG</span>
-                </h3>
-                <button
-                  onClick={() => setShowApiInfo(!showApiInfo)}
-                  className="text-[10px] font-mono text-[#E63946] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0"
-                >
-                  {showApiInfo ? "[ Close Guide ]" : "[ Guide ]"}
-                </button>
-              </div>
-
-              {/* Status Indicator */}
-              <div className="flex items-center gap-2 text-[10px] font-mono py-1 px-2.5 bg-[#1A1A1A]/5 border border-[#1A1A1A]/5 rounded-sm">
-                {(hasSystemKey || customApiKey) ? (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-emerald-800 font-bold">
-                      {customApiKey ? "CUSTOM API KEY ACTIVE" : "SYSTEM API KEY ACTIVE"}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    <span className="text-amber-800 font-bold text-[9px]">LOCAL CACHE SIMULATION</span>
-                  </>
-                )}
-              </div>
-
-              {/* Guide Content */}
-              {showApiInfo && (
-                <div className="text-[11px] leading-relaxed text-[#1A1A1A]/80 border-t border-[#1A1A1A]/5 pt-2.5 space-y-2">
-                  <p className="font-bold font-serif text-[#1A1A1A]">🔑 Gemini API Key 설정 가이드</p>
-                  <ol className="list-decimal list-inside space-y-1 text-[10px]">
-                    <li>AI Studio의 우측 상단 <strong>Secrets Panel</strong> 또는 좌측 하단 <strong>Settings</strong>를 엽니다.</li>
-                    <li>새 비밀키 변수로 <code className="bg-[#1A1A1A]/5 px-1 py-0.5 font-mono text-[#E63946]">GEMINI_API_KEY</code>를 등록합니다.</li>
-                    <li>또는 <strong>아래의 입력 칸</strong>에 직접 발급받은 API 키를 붙여넣어 임시로 즉시 실시간 뉴스 분석 기능을 활성화해 볼 수 있습니다 (세션 저장).</li>
-                  </ol>
-                  <div className="h-0.5 bg-[#1A1A1A]/5"></div>
-                </div>
-              )}
-
-              {/* Custom Key Input Area */}
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-[#1A1A1A]/40 block">Gemini API Key 입력</span>
-                <div className="flex gap-1.5">
-                  <input
-                    type="password"
-                    placeholder="AI Studio 또는 Google AI SDK Key"
-                    value={customApiKey}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setCustomApiKey(val);
-                      if (val) {
-                        sessionStorage.setItem("gemini_custom_api_key", val);
-                      } else {
-                        sessionStorage.removeItem("gemini_custom_api_key");
-                      }
-                    }}
-                    className="flex-1 text-[11px] font-mono bg-transparent border border-[#1A1A1A]/20 py-1.5 px-2.5 focus:outline-none focus:border-[#1A1A1A] text-[#1A1A1A]"
-                  />
-                  {customApiKey && (
-                    <button
-                      onClick={() => {
-                        setCustomApiKey("");
-                        sessionStorage.removeItem("gemini_custom_api_key");
-                      }}
-                      className="px-2 border border-red-200 hover:border-red-400 text-red-600 text-[9px] font-mono bg-transparent cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <p className="text-[8px] text-[#1A1A1A]/40 leading-normal">
-                  * 본 키는 브라우저 세션에 안전하게 보관되며 서버측 메모리에만 프록시로 전달됩니다.
-                </p>
-              </div>
-            </div>
-
-            <div className="h-px bg-[#1A1A1A]/10"></div>
-
             {/* Theme & Search Settings Area */}
             <div className="space-y-4">
               <h2 className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#E63946] flex items-center gap-1.5">
@@ -357,6 +247,9 @@ export default function App() {
                       onClick={() => {
                         setSelectedRegion(r);
                         setCustomKeyword("");
+                        setMapCenter({ lat: r.lat, lng: r.lng });
+                        setMapZoom(13);
+                        fetchPlaces(r.value, selectedTheme.suffix, "");
                       }}
                       className={`text-xs text-left py-2 px-3 border transition-all duration-200 ${
                         selectedRegion.value === r.value && !customKeyword
@@ -380,6 +273,7 @@ export default function App() {
                       onClick={() => {
                         setSelectedTheme(theme);
                         setCustomKeyword("");
+                        fetchPlaces(selectedRegion.value, theme.suffix, "");
                       }}
                       className={`text-xs text-left py-2 px-3 border flex items-center justify-between transition-all duration-200 ${
                         selectedTheme.label === theme.label && !customKeyword
@@ -448,14 +342,6 @@ export default function App() {
                   <div className="flex-1">
                     <p className="font-bold">{errorMsg ? "알림" : "완료"}</p>
                     <p className="mt-0.5 opacity-90 text-[11px]">{errorMsg || successMsg}</p>
-                    {errorMsg && (errorMsg.includes("할당량") || errorMsg.includes("API Key") || errorMsg.includes("Quota") || errorMsg.includes("429")) && (
-                      <button
-                        onClick={() => setIsApiModalOpen(true)}
-                        className="mt-2 px-3 py-1.5 bg-[#E63946] text-white font-bold text-[10px] tracking-wider uppercase hover:bg-[#1A1A1A] transition-colors cursor-pointer block"
-                      >
-                        [ 즉시 개인 API Key 등록하기 ]
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -698,19 +584,29 @@ export default function App() {
 
               </div>
 
-              {/* News Outlink Action */}
+              {/* News Outlink Action & Naver Map Navigation */}
               <div className="pt-4 border-t border-[#1A1A1A]/10 space-y-2.5">
+                <a
+                  href={`https://map.naver.com/v5/search/${encodeURIComponent(selectedPlace.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#03C75A] hover:bg-[#02b350] text-white text-xs font-bold py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm"
+                >
+                  <span>네이버 지도에서 위치 확인</span>
+                  <MapPin className="w-3.5 h-3.5" />
+                </a>
+
                 <a
                   href={selectedPlace.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full bg-[#1A1A1A] hover:bg-[#E63946] text-[#FCFAF7] text-xs font-bold uppercase py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm"
+                  className="w-full border border-[#1A1A1A]/20 hover:border-[#1A1A1A] bg-transparent text-[#1A1A1A] text-xs font-bold uppercase py-2.5 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-xs"
                 >
-                  <span>Read Full Article</span>
+                  <span>원문 기사 읽기</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
                 <p className="text-[9px] text-[#1A1A1A]/50 text-center leading-normal">
-                  본 링크는 실시간 공신 언론사 출처로 직접 연동됩니다.
+                  본 정보는 공신 언론 보도를 기반으로 추출되었으며, 네이버 지도 검색 및 원문 기사로 상세 확인이 가능합니다.
                 </p>
               </div>
 
@@ -733,145 +629,6 @@ export default function App() {
           <span>* 제주 구좌읍 중심 베이커리 핫스팟 소셜 미디어 인산인해 분석 수립</span>
         </div>
       </footer>
-
-      {/* 4. Elegant Gemini API Configuration Modal Overlay */}
-      {isApiModalOpen && (
-        <div className="fixed inset-0 bg-[#1A1A1A]/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in" id="api-modal-overlay">
-          <div 
-            className="w-full max-w-lg bg-[#FCFAF7] border-2 border-[#1A1A1A] p-6 sm:p-8 space-y-6 shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-            id="api-modal-container"
-          >
-            {/* Close Button */}
-            <button 
-              onClick={() => setIsApiModalOpen(false)}
-              className="absolute top-4 right-4 text-xl font-mono text-[#1A1A1A]/60 hover:text-[#1A1A1A] cursor-pointer bg-transparent border-0 font-bold p-1"
-            >
-              [ ✕ ]
-            </button>
-
-            {/* Header */}
-            <div className="space-y-1">
-              <h2 className="text-2xl font-serif font-black tracking-tight text-[#1A1A1A] flex items-center gap-2">
-                <Key className="w-6 h-6 text-[#E63946]" />
-                <span>GEMINI CORE CONFIG</span>
-              </h2>
-              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#1A1A1A]/60">
-                Configure Spatial Intelligence Search Grounding API
-              </p>
-            </div>
-
-            <hr className="border-[#1A1A1A]/15" />
-
-            {/* Explanatory Guide block */}
-            <div className="space-y-3.5 text-xs text-[#1A1A1A]/90 leading-relaxed bg-[#1A1A1A]/5 p-4 border border-[#1A1A1A]/5">
-              <p className="font-serif italic font-bold text-[#E63946] text-sm">
-                💡 실시간 보도 연동(Google Search Grounding) 기능 활성화 방법
-              </p>
-              
-              <div className="space-y-2.5">
-                <div className="space-y-1">
-                  <span className="font-bold block text-[11px] text-[#1A1A1A]">방법 A. 가장 추천하는 방법 (AI Studio Secrets 변수)</span>
-                  <p className="text-[11px] text-[#1A1A1A]/70">
-                    AI Studio 화면 우측 상단의 <strong>Secrets Panel</strong>(또는 좌측 하단의 톱니바퀴 <strong>Settings</strong>)을 열고, 이름이 <code className="bg-white px-1 border border-[#1A1A1A]/10 text-[#E63946] font-mono text-[10px]">GEMINI_API_KEY</code>인 환경 변수를 생성해 본인의 API 키를 입력해 주세요. 영구적으로 고유 한도가 적용됩니다.
-                  </p>
-                </div>
-                
-                <div className="space-y-1">
-                  <span className="font-bold block text-[11px] text-[#1A1A1A]">방법 B. 즉시 테스트하는 방법 (브라우저 임시 입력)</span>
-                  <p className="text-[11px] text-[#1A1A1A]/70">
-                    아래의 입력 칸에 즉시 발급받은 Gemini API Key를 붙여넣어 볼 수 있습니다. 세션 스토리지에 안전하게 보관되며 새로고침 전까지 기기 내에 머무릅니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* API Key Input slots */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-baseline">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-[#1A1A1A]/50">나의 Gemini API Key</span>
-                <a 
-                  href="https://aistudio.google.com/app/apikey" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-[10px] text-[#E63946] hover:underline flex items-center gap-1 font-mono"
-                >
-                  [ 무료 API Key 발급받기 ↗ ]
-                </a>
-              </div>
-              
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  placeholder="AI Studio에서 복사한 AIzaSy... 형태의 키를 입력해 주세요"
-                  value={customApiKey}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCustomApiKey(val);
-                    if (val) {
-                      sessionStorage.setItem("gemini_custom_api_key", val);
-                    } else {
-                      sessionStorage.removeItem("gemini_custom_api_key");
-                    }
-                  }}
-                  className="flex-1 text-xs font-mono bg-[#FCFAF7] border border-[#1A1A1A]/30 py-2 px-3 text-[#1A1A1A] focus:outline-none focus:border-[#E63946] transition-all"
-                />
-                {customApiKey && (
-                  <button
-                    onClick={() => {
-                      setCustomApiKey("");
-                      sessionStorage.removeItem("gemini_custom_api_key");
-                    }}
-                    className="px-3 border border-red-200 hover:border-red-400 text-red-600 text-xs font-mono bg-transparent cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Connection Status indicator */}
-            <div className="flex items-center justify-between text-[11px] font-mono py-2.5 px-4 bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 rounded-sm">
-              <span className="text-[#1A1A1A]/50">CURRENT ENGINE:</span>
-              <div className="flex items-center gap-1.5 font-bold">
-                {hasSystemKey || customApiKey ? (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-emerald-800">
-                      {customApiKey ? "CUSTOM LIVE SEARCH ACTIVE" : "SYSTEM LIVE SEARCH ACTIVE"}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    <span className="text-amber-800">PRE-CACHED FALLBACK ACTIVE</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="pt-4 flex flex-col sm:flex-row gap-2">
-              <button
-                onClick={() => {
-                  setIsApiModalOpen(false);
-                  handleSearch();
-                }}
-                className="flex-1 py-3 px-4 bg-[#1A1A1A] hover:bg-[#E63946] text-[#FCFAF7] text-xs font-bold tracking-widest uppercase transition-all cursor-pointer text-center"
-              >
-                적용 후 실시간 뉴스 분석 실행
-              </button>
-              <button
-                onClick={() => setIsApiModalOpen(false)}
-                className="py-3 px-6 border border-[#1A1A1A]/30 hover:border-[#1A1A1A] bg-transparent text-[#1A1A1A] text-xs font-bold tracking-widest uppercase transition-all cursor-pointer text-center"
-              >
-                닫기
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );

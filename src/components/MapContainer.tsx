@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NewsPlace } from "../types";
 
 interface MapContainerProps {
@@ -19,23 +19,40 @@ export default function MapContainer({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const [leafletReady, setLeafletReady] = useState(!!(window as any).L);
+
+  // Poll or check if Leaflet is loaded
+  useEffect(() => {
+    if ((window as any).L) {
+      setLeafletReady(true);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if ((window as any).L) {
+        setLeafletReady(true);
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const L = (window as any).L;
 
   // 1. Initialize Map
   useEffect(() => {
-    if (!mapContainerRef.current || !L) return;
+    if (!mapContainerRef.current || !L || !leafletReady) return;
 
     // Create Leaflet map instance
     const map = L.map(mapContainerRef.current, {
       zoomControl: false,
     }).setView([center.lat, center.lng], zoom);
 
-    // Add high-quality Mapbox-like styled free OpenStreetMap tiles (Voyager variant)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
+    // Add official, high-quality, and robust standard OpenStreetMap tiles
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
     }).addTo(map);
 
     // Add zoom control at bottom-right for elegant UI
@@ -43,28 +60,48 @@ export default function MapContainer({
 
     mapRef.current = map;
 
+    // Handle container resize cleanly using ResizeObserver to prevent grey/broken tiles
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    });
+
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
+    // Delayed invalidateSize to ensure correct initial rendering after layout completes
+    const timer = setTimeout(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    }, 300);
+
     return () => {
+      clearTimeout(timer);
+      resizeObserver.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [leafletReady]);
 
   // 2. Fly to region center when props change
   useEffect(() => {
-    if (mapRef.current && L) {
+    if (mapRef.current && L && leafletReady) {
       mapRef.current.setView([center.lat, center.lng], zoom, {
         animate: true,
         duration: 1.2,
       });
     }
-  }, [center, zoom]);
+  }, [center, zoom, leafletReady]);
 
   // 3. Populate Map Markers when places list changes
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !L) return;
+    if (!map || !L || !leafletReady) return;
 
     // Clear existing markers
     markersRef.current.forEach((marker) => marker.remove());
@@ -105,8 +142,9 @@ export default function MapContainer({
         iconAnchor: [18, 18],
       });
 
-      // Create marker
+      // Create marker and associate placeId for 100% robust tracking
       const marker = L.marker([place.latitude, place.longitude], { icon: customIcon }).addTo(map);
+      (marker as any).placeId = place.id;
 
       // Bind dynamic rich popup matching Editorial styling
       const popupContent = `
@@ -125,12 +163,12 @@ export default function MapContainer({
           <p class="text-[11px] text-[#1A1A1A]/70 line-clamp-2 leading-relaxed mb-2 bg-[#1A1A1A]/5 p-2 border border-[#1A1A1A]/5">
             "${place.newsTitle}"
           </p>
-          <div class="flex items-center gap-1.5 mt-1">
-            <button id="btn-popup-select-${place.id}" class="flex-1 text-center bg-[#1A1A1A] text-white text-[10px] font-bold tracking-wider uppercase py-1.5 px-2 hover:bg-[#E63946] cursor-pointer transition-colors">
+          <div class="flex items-center gap-1 mt-1">
+            <button id="btn-popup-select-${place.id}" class="flex-1 text-center bg-[#1A1A1A] text-white text-[9px] font-bold tracking-tight uppercase py-1.5 px-2 hover:bg-[#E63946] cursor-pointer transition-colors">
               상세 분석 보기
             </button>
-            <a href="${place.url}" target="_blank" rel="noopener noreferrer" class="text-center border border-[#1A1A1A]/20 text-[#1A1A1A] text-[10px] py-1.5 px-2 hover:bg-[#1A1A1A]/5 transition-colors">
-              원문 ↗
+            <a href="https://map.naver.com/v5/search/${encodeURIComponent(place.name)}" target="_blank" rel="noopener noreferrer" class="text-center bg-[#03C75A] text-white text-[9px] font-bold py-1.5 px-2 hover:bg-[#02b350] transition-colors rounded-xs">
+              네이버 지도 ↗
             </a>
           </div>
         </div>
@@ -165,18 +203,12 @@ export default function MapContainer({
       const bounds = L.latLngBounds(places.map((p) => [p.latitude, p.longitude]));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
-  }, [places]);
+  }, [places, leafletReady]);
 
   // 4. Handle Programmatic Fly To selected place
   useEffect(() => {
-    if (selectedPlace && mapRef.current && L) {
-      const marker = markersRef.current.find((m) => {
-        const latLng = m.getLatLng();
-        return (
-          Math.abs(latLng.lat - selectedPlace.latitude) < 0.0001 &&
-          Math.abs(latLng.lng - selectedPlace.longitude) < 0.0001
-        );
-      });
+    if (selectedPlace && mapRef.current && L && leafletReady) {
+      const marker = markersRef.current.find((m) => m.placeId === selectedPlace.id);
 
       if (marker) {
         marker.openPopup();
@@ -187,7 +219,7 @@ export default function MapContainer({
         duration: 1.5,
       });
     }
-  }, [selectedPlace]);
+  }, [selectedPlace, leafletReady]);
 
   return (
     <div className="relative w-full h-full min-h-[350px] md:min-h-0 bg-[#F0EEEB] overflow-hidden border border-[#1A1A1A]/10">

@@ -6,3 +6,45 @@
   --font-serif: "Playfair Display", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
+
+/* Reset default Leaflet custom divIcon background and border */
+.custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Editorial styling for Leaflet popups */
+.leaflet-popup-content-wrapper {
+  background-color: #FCFAF7 !important;
+  color: #1A1A1A !important;
+  border: 2px solid #1A1A1A !important;
+  border-radius: 0px !important; /* Sharp corners */
+  box-shadow: 4px 4px 0px 0px #1A1A1A !important; /* Block retro shadow */
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px !important;
+  font-family: var(--font-sans) !important;
+}
+
+.leaflet-popup-tip {
+  background-color: #FCFAF7 !important;
+  border: 2px solid #1A1A1A !important;
+  box-shadow: none !important;
+}
+
+/* Fix Leaflet tiles display bug in Tailwind CSS environments */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+  display: block;
+}
+
+/* Ensure leaflet container fills the layout cleanly */
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+
