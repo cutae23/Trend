@@ -363,16 +363,42 @@ function generateDynamicMockPlaces(
     addressPrefix = `${regionName} 중앙로`;
   }
 
-  const keyword = (query || "").trim();
+  // Clean the keyword to prevent duplication with regionName and label
+  let keyword = (query || "").trim();
+  const regionsToStrip = [
+    regionLabel, regionName, "서울", "seoul", "부산", "busan", "제주", "jeju", "강원", "gangwon", 
+    "인천", "incheon", "대구", "daegu", "대전", "daejeon", "광주", "gwangju", 
+    "경주", "gyeongju", "수원", "suwon", "특별자치시", "특별시", "광역시", "특별자치도"
+  ];
+  for (const r of regionsToStrip) {
+    if (r && r.length > 1) {
+      const regex = new RegExp(r, "gi");
+      keyword = keyword.replace(regex, "");
+    }
+  }
+  keyword = keyword.replace(/\s+/g, " ").trim();
+
+  // If keyword is generic theme words, make them empty to use beauty names
+  if (keyword === "맛집" || keyword === "카페" || keyword === "명소" || keyword === "문화" || keyword === "가볼만한곳" || keyword === "핫플레이스" || keyword === "인기") {
+    keyword = "";
+  }
+
   const items: NewsPlace[] = [];
   const categories: ('restaurant' | 'cafe' | 'spot' | 'culture')[] = ['restaurant', 'cafe', 'spot', 'culture'];
-  
-  const placeNames = [
-    { name: "아뜰리에", suffix: "스튜디오", detail: "감각적인 인테리어와 독창적인 감성의 시그니처 공간" },
-    { name: "하우스", suffix: "가든", detail: "자연 친화적이고 아늑한 힐링 테마의 대표 명소" },
-    { name: "테라스", suffix: "키친", detail: "전망 좋은 뷰와 함께 즐기는 트렌디 미식 플레이스" },
-    { name: "팩토리", suffix: "랩", detail: "체험형 콘텐츠와 트렌디한 감각이 융합된 이색 공간" }
-  ];
+
+  const beautyNames: Record<'restaurant' | 'cafe' | 'spot' | 'culture', string[]> = {
+    restaurant: ["식당 온화", "윤슬 다이닝", "도담 한정식", "가온정 국수", "모랑 테이블", "소담 반상", "연우가", "진미 식가"],
+    cafe: ["카페 혜윰", "오후의 홍차", "초록뜰 베이커리", "늘봄 로스터리", "여울목 커피", "잔잔한 물결", "소소한 아뜰리에", "윤슬 과자점"],
+    spot: ["별빛 야외 정원", "바람의 언덕 산책로", "푸른솔 메타세쿼이아길", "해넘이 명소 전망대", "솔향 하늘공원", "해안 둘레길 스팟"],
+    culture: ["공간 여백", "아트 가든 복합문화갤러리", "기록의 방 아카이브 박물관", "빛과 소리 미디어아트 홀", "혜윰 창작 살롱"]
+  };
+
+  const beautyMenus: Record<'restaurant' | 'cafe' | 'spot' | 'culture', string[]> = {
+    restaurant: ["특제 한우 수육과 곤드레 솥밥", "셰프 스페셜 에이징 스테이크와 한우 파스타", "정갈한 로컬 제철 모둠 쌈밥 반상", "동해 산지 직송 활어회 코스"],
+    cafe: ["시그니처 아인슈페너와 솔트 카라멜 휘낭시에", "스페셜티 푸어오버 커피와 유기농 쌀 소금빵", "제주 유기농 말차 샷 크림 라떼와 조각 케이크", "수제 시트러스 과일 에이드와 클래식 크로플"],
+    spot: ["수려한 경관 속 야외 인생샷 포토 스팟 코스", "사계절 야생화 정원 속 힐링 산책 코스", "야경이 어우러진 주말 데이트 산책로 추천"],
+    culture: ["시그니처 미디어 아트 특별 기획 전시", "전통과 현대가 공존하는 감각적인 팝업 아카이브", "청년 신진 작가 3인 초청 현대 미술 초대전"]
+  };
 
   const targetCategory = category && categories.includes(category as any) 
     ? (category as 'restaurant' | 'cafe' | 'spot' | 'culture')
@@ -382,22 +408,34 @@ function generateDynamicMockPlaces(
   for (let i = 0; i < count; i++) {
     const itemCategory = targetCategory || categories[i % categories.length];
     
-    let name = "";
-    let menu = "";
+    let baseName = beautyNames[itemCategory][i % beautyNames[itemCategory].length];
+    let menu = beautyMenus[itemCategory][i % beautyMenus[itemCategory].length];
     
-    if (itemCategory === 'restaurant') {
-      name = keyword ? `${regionLabel} ${keyword} 명소 ${placeNames[i % 4].name}` : `${regionLabel} 미식 다이닝 ${placeNames[i % 4].name}`;
-      menu = keyword ? `특제 ${keyword} 플래터, 셰프 스페셜 구이` : "에이징 스테이크, 트러플 크림 파스타";
-    } else if (itemCategory === 'cafe') {
-      name = keyword ? `${regionLabel} ${keyword} 아뜰리에` : `${regionLabel} 감성 베이커리 ${placeNames[i % 4].name}`;
-      menu = keyword ? `시그니처 수제 ${keyword}, 너티 크림 라떼` : "스페셜티 푸어오버 커피, 유기농 빵";
-    } else if (itemCategory === 'spot') {
-      name = keyword ? `${regionLabel} ${keyword} 힐링파크` : `${regionLabel} 포토제닉 야외 정원 명소`;
-      menu = keyword ? `${keyword} 명소 산책코스` : "무료 산책로 코스, 야외 인생샷 스팟";
+    // Combine region label elegantly
+    let finalName = "";
+    if (keyword) {
+      if (baseName.includes(keyword) || keyword.includes(baseName)) {
+        finalName = `${regionLabel} ${baseName}`;
+      } else {
+        finalName = `${regionLabel} ${keyword} ${baseName}`;
+      }
+      menu = `특제 수제 ${keyword} 및 ${menu}`;
     } else {
-      name = keyword ? `${regionLabel} ${keyword} 복합문화공간` : `${regionLabel} 복합 갤러리 아카이브`;
-      menu = keyword ? `${keyword} 특별 테마 전시` : "시그니처 미디어 아트 전시, 팝업 굿즈";
+      finalName = `${regionLabel} ${baseName}`;
     }
+
+    // Clean up any remaining multiple spaces or trailing duplications
+    finalName = finalName.replace(/\s+/g, " ").trim();
+
+    // Deduplicate duplicate consecutive words
+    const tokens = finalName.split(" ");
+    const uniqueTokens: string[] = [];
+    for (const token of tokens) {
+      if (uniqueTokens.length === 0 || uniqueTokens[uniqueTokens.length - 1] !== token) {
+        uniqueTokens.push(token);
+      }
+    }
+    finalName = uniqueTokens.join(" ");
 
     const angle = (i * 2 * Math.PI) / count + 0.2;
     const radius = 0.0035 + (i * 0.001);
@@ -405,19 +443,19 @@ function generateDynamicMockPlaces(
     const lng = baseLng + radius * Math.cos(angle);
 
     const address = `${addressPrefix} ${20 + i * 12}번길 ${5 + i}`;
-    const newsTitle = `[트렌드 브리핑] 최근 핫플레이스로 급부상한 ${regionLabel} '${keyword || "최신 화제의 장소"}' 집중 보도`;
-    const newsSummary = `${regionLabel}에 새롭게 둥지를 튼 이곳은 언론 및 SNS에서 이색적인 테마와 독창적인 감성으로 가득한 필수 여행 코스로 화제를 모으고 있습니다.`;
+    const newsTitle = `[공간 뉴스] 최근 트렌드로 뜨겁게 주목받는 ${regionLabel} '${keyword || baseName}' 집중 리포트`;
+    const newsSummary = `${regionLabel}에 새롭게 발걸음을 이끄는 이곳은 로컬 고유의 독창적인 분위기와 감성 넘치는 스토리텔링으로 많은 이들의 인증샷 성지로 자리 잡았습니다.`;
 
     items.push({
       id: `dynamic_sim_${i}_${Date.now()}`,
-      name,
+      name: finalName,
       category: itemCategory,
       newsTitle,
       newsSummary,
       address,
       latitude: Number(lat.toFixed(6)),
       longitude: Number(lng.toFixed(6)),
-      url: `https://search.naver.com/search.naver?query=${encodeURIComponent(name)}`,
+      url: `https://search.naver.com/search.naver?query=${encodeURIComponent(finalName)}`,
       publishDate: "2026-07-09",
       menuSummary: menu
     });

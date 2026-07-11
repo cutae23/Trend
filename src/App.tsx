@@ -266,7 +266,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [loading]);
 
-  const fetchPlaces = async (regionName: string, themeSuffix: string, customQuery: string, isInitial = false) => {
+  const fetchPlaces = async (regionName: string, themeSuffix: string, customQuery: string, isInitial = false, overrideApiKey?: string) => {
     setLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
@@ -280,7 +280,7 @@ export default function App() {
           region: regionName,
           query: customQuery ? customQuery : `${regionName} ${themeSuffix}`,
           category: activeCategory === "all" ? undefined : activeCategory,
-          customApiKey: geminiApiKey
+          customApiKey: overrideApiKey !== undefined ? overrideApiKey : geminiApiKey
         })
       });
 
@@ -626,7 +626,7 @@ export default function App() {
                             setTimeout(() => setKeySavedMessage(""), 4000);
                             
                             // Re-fetch immediately with empty custom key (which maps to server's key)
-                            fetchPlaces(selectedRegion.value, selectedTheme.suffix, customKeyword);
+                            fetchPlaces(selectedRegion.value, selectedTheme.suffix, customKeyword, false, "");
                           }}
                           className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2 px-3 rounded-xs text-[10px] uppercase tracking-wider transition-all cursor-pointer text-center block shadow-xs active:scale-98"
                         >
