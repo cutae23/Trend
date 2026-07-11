@@ -22,6 +22,7 @@ import {
   Calendar
 } from "lucide-react";
 import { NewsPlace, CategoryFilter, RegionOption } from "./types";
+import MapContainer from "./components/MapContainer";
 
 // Supported preset regions in South Korea with coordinates
 const REGIONS: RegionOption[] = [
@@ -998,52 +999,63 @@ export default function App() {
 
         </aside>
 
-        {/* Right Section: Interactive Editorial Board Panel (Map Deleted) */}
-        <section className="flex-1 bg-[#FCFAF7] relative overflow-hidden flex flex-col h-full min-h-0" id="editorial-details-panel">
+        {/* Right Section: Interactive Map + Editorial Details Split Panel */}
+        <section className="flex-1 bg-[#FCFAF7] relative overflow-hidden flex flex-col md:flex-row h-full min-h-0" id="editorial-details-panel">
           
-          {/* Subtle Grid Backdrop for Editorial style */}
-          <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(#1A1A1A 0.5px, transparent 0.5px)", backgroundSize: "20px 20px" }}></div>
-          
-          {selectedPlace ? (
-            <div className="flex-1 h-full p-6 sm:p-12 overflow-y-auto z-10 relative flex flex-col justify-between max-w-4xl mx-auto w-full space-y-8" id="details-block">
-              <div className="space-y-8">
-                {/* Header/Category indicator */}
-                <div className="flex items-center justify-between pb-4 border-b border-[#1A1A1A]/10">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[11px] font-mono uppercase tracking-widest px-2.5 py-1 border ${getCategoryThemeClass(selectedPlace.category)}`}>
-                      {getCategoryLabel(selectedPlace.category)}
-                    </span>
-                    <span className="text-[10px] font-mono text-[#1A1A1A]/50">LAT: {selectedPlace.latitude.toFixed(4)} • LNG: {selectedPlace.longitude.toFixed(4)}</span>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedPlace(null)}
-                    className="text-[#1A1A1A]/50 hover:text-[#E63946] p-1 text-[11px] uppercase font-bold tracking-wider hover:underline cursor-pointer"
-                  >
-                    [ 상세 닫기 ]
-                  </button>
-                </div>
+          {/* Left: Interactive Map Container */}
+          <div className="flex-1 h-1/2 md:h-full min-h-[350px] md:min-h-0 relative z-10" id="map-section">
+            <MapContainer
+              places={filteredPlaces}
+              selectedPlace={selectedPlace}
+              onSelectPlace={setSelectedPlace}
+              center={mapCenter}
+              zoom={mapZoom}
+            />
+          </div>
 
-                {/* Main Name & Signature */}
-                <div className="space-y-3">
-                  <span className="text-[11px] font-mono text-[#E63946] font-bold tracking-widest uppercase block">SELECTED TREND HOTSPOT</span>
-                  <h2 className="text-4xl sm:text-5xl font-serif font-black tracking-tight text-[#1A1A1A] leading-tight">
-                    {selectedPlace.name}
-                  </h2>
-                  <div className="inline-block bg-[#E63946]/5 border border-[#E63946]/10 px-4 py-2.5 rounded-sm">
-                    <p className="text-sm font-serif italic text-[#E63946] font-bold">
-                      ✨ 시그니처 메뉴/특징: {selectedPlace.menuSummary}
-                    </p>
+          {/* Right: Scrollable Details / Cover Sidebar */}
+          <div className="w-full md:w-[420px] lg:w-[460px] border-t md:border-t-0 md:border-l border-[#1A1A1A]/10 h-1/2 md:h-full overflow-y-auto flex flex-col bg-[#FCFAF7] shrink-0 relative z-20" id="details-sidebar">
+            {/* Subtle Grid Backdrop for Editorial style */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(#1A1A1A 0.5px, transparent 0.5px)", backgroundSize: "20px 20px" }}></div>
+            
+            {selectedPlace ? (
+              <div className="p-6 overflow-y-auto z-10 relative flex flex-col justify-between h-full space-y-8" id="details-block">
+                <div className="space-y-6">
+                  {/* Header/Category indicator */}
+                  <div className="flex items-center justify-between pb-4 border-b border-[#1A1A1A]/10">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-mono uppercase tracking-widest px-2.5 py-1 border ${getCategoryThemeClass(selectedPlace.category)}`}>
+                        {getCategoryLabel(selectedPlace.category)}
+                      </span>
+                      <span className="text-[10px] font-mono text-[#1A1A1A]/50">LAT: {selectedPlace.latitude.toFixed(4)} • LNG: {selectedPlace.longitude.toFixed(4)}</span>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedPlace(null)}
+                      className="text-[#1A1A1A]/50 hover:text-[#E63946] p-1 text-[11px] uppercase font-bold tracking-wider hover:underline cursor-pointer"
+                    >
+                      [ 상세 닫기 ]
+                    </button>
                   </div>
-                </div>
 
-                {/* Grid for Two Columns: Info & Media */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-                  {/* Left Column: Address & Details */}
-                  <div className="space-y-6">
-                    <div className="space-y-2">
+                  {/* Main Name & Signature */}
+                  <div className="space-y-3">
+                    <span className="text-[11px] font-mono text-[#E63946] font-bold tracking-widest uppercase block">SELECTED TREND HOTSPOT</span>
+                    <h2 className="text-3xl font-serif font-black tracking-tight text-[#1A1A1A] leading-tight">
+                      {selectedPlace.name}
+                    </h2>
+                    <div className="inline-block bg-[#E63946]/5 border border-[#E63946]/10 px-4 py-2.5 rounded-sm">
+                      <p className="text-xs font-serif italic text-[#E63946] font-bold leading-normal">
+                        ✨ 시그니처 메뉴/특징: {selectedPlace.menuSummary}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Address & Info */}
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-1.5">
                       <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">공식 등록 주소</span>
                       <div className="border border-[#1A1A1A]/10 p-4 bg-white/50 backdrop-blur-xs space-y-3 rounded-sm">
-                        <p className="text-sm font-sans text-[#1A1A1A]/80 leading-relaxed font-semibold">
+                        <p className="text-xs font-sans text-[#1A1A1A]/80 leading-relaxed font-semibold">
                           {selectedPlace.address}
                         </p>
                         <button
@@ -1065,7 +1077,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">공간 분류 정보</span>
                       <div className="border border-[#1A1A1A]/10 p-4 bg-white/50 backdrop-blur-xs rounded-sm space-y-2 text-xs text-[#1A1A1A]/80">
                         <div className="flex justify-between pb-1.5 border-b border-[#1A1A1A]/5">
@@ -1078,111 +1090,111 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Right Column: Media Analysis */}
-                  <div className="space-y-2">
-                    <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">언론 보도 심층 분석</span>
-                    <div className="bg-[#E63946]/5 border-l-4 border-l-[#E63946] p-5 space-y-3 h-full rounded-r-sm">
-                      <h4 className="text-sm font-bold font-serif text-[#1A1A1A] leading-snug">
-                        "{selectedPlace.newsTitle}"
-                      </h4>
-                      <p className="text-xs text-[#1A1A1A]/80 leading-relaxed font-sans">
-                        {selectedPlace.newsSummary}
-                      </p>
+                    {/* Media Analysis */}
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">언론 보도 심층 분석</span>
+                      <div className="bg-[#E63946]/5 border-l-4 border-l-[#E63946] p-4.5 space-y-2.5 rounded-r-sm">
+                        <h4 className="text-xs font-bold font-serif text-[#1A1A1A] leading-snug">
+                          "{selectedPlace.newsTitle}"
+                        </h4>
+                        <p className="text-[11px] text-[#1A1A1A]/80 leading-relaxed font-sans">
+                          {selectedPlace.newsSummary}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Action Buttons Panel */}
-              <div className="pt-6 border-t border-[#1A1A1A]/10">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <a
-                    href={`https://map.naver.com/v5/search/${encodeURIComponent(selectedPlace.name)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-[#03C75A] hover:bg-[#02b350] text-white text-xs font-bold py-3.5 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm"
-                  >
-                    <span>네이버 지도에서 위치 확인</span>
-                    <MapPin className="w-4 h-4" />
-                  </a>
+                {/* Action Buttons Panel */}
+                <div className="pt-6 border-t border-[#1A1A1A]/10 mt-auto">
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href={`https://map.naver.com/v5/search/${encodeURIComponent(selectedPlace.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-[#03C75A] hover:bg-[#02b350] text-white text-[11px] font-bold py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm"
+                    >
+                      <span>네이버 지도에서 위치 확인</span>
+                      <MapPin className="w-4 h-4" />
+                    </a>
 
-                  <button
-                    onClick={() => toggleBucketList(selectedPlace)}
-                    className={`text-xs font-bold py-3.5 px-4 tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm cursor-pointer ${
-                      bucketList.some(b => b.id === selectedPlace.id)
-                        ? "bg-[#E63946] hover:bg-[#d62836] text-white"
-                        : "border border-[#1A1A1A]/20 hover:border-[#1A1A1A] hover:bg-[#1A1A1A]/5 bg-white text-[#1A1A1A]"
-                    }`}
-                  >
-                    <Star className={`w-4 h-4 ${bucketList.some(b => b.id === selectedPlace.id) ? "fill-white text-white" : "text-[#1A1A1A]/60"}`} />
-                    <span>
-                      {bucketList.some(b => b.id === selectedPlace.id)
-                        ? "버킷리스트에서 제거"
-                        : "버킷리스트 추가"
-                      }
-                    </span>
-                  </button>
+                    <button
+                      onClick={() => toggleBucketList(selectedPlace)}
+                      className={`w-full text-[11px] font-bold py-3 px-4 tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm cursor-pointer ${
+                        bucketList.some(b => b.id === selectedPlace.id)
+                          ? "bg-[#E63946] hover:bg-[#d62836] text-white"
+                          : "border border-[#1A1A1A]/20 hover:border-[#1A1A1A] hover:bg-[#1A1A1A]/5 bg-white text-[#1A1A1A]"
+                      }`}
+                    >
+                      <Star className={`w-4 h-4 ${bucketList.some(b => b.id === selectedPlace.id) ? "fill-white text-white" : "text-[#1A1A1A]/60"}`} />
+                      <span>
+                        {bucketList.some(b => b.id === selectedPlace.id)
+                          ? "버킷리스트에서 제거"
+                          : "버킷리스트 추가"
+                        }
+                      </span>
+                    </button>
 
-                  <a
-                    href={selectedPlace.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="border border-[#1A1A1A]/20 hover:border-[#1A1A1A] bg-transparent text-[#1A1A1A] text-xs font-bold uppercase py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-xs rounded-sm hover:bg-[#1A1A1A]/5"
-                  >
-                    <span>원문 기사 읽기</span>
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
-                <p className="text-[10px] text-[#1A1A1A]/50 text-center mt-4 leading-normal">
-                  본 정보는 공신 언론 보도를 기반으로 추출되었으며, 네이버 지도 연동 및 원문 기사로 상세 확인이 가능합니다.
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* Cover index style when no selectedPlace */
-            <div className="flex-1 flex flex-col justify-center items-center p-8 text-center max-w-xl mx-auto space-y-6 z-10 relative">
-              <div className="space-y-4">
-                <div className="inline-block border border-[#1A1A1A] px-3 py-1 text-[10px] uppercase tracking-[0.25em] font-bold text-[#1A1A1A]">
-                  Locus AI • 공간 탐색 지능
-                </div>
-                <h1 className="text-4xl sm:text-5xl font-serif font-black tracking-tight text-[#1A1A1A]">
-                  LOCUS JOURNAL
-                </h1>
-                <p className="text-xs font-sans tracking-[0.15em] uppercase text-[#1A1A1A]/60 font-semibold">
-                  NEWS-BASED SPATIAL DISCOVERY ENGINE
-                </p>
-              </div>
-
-              <div className="h-px w-24 bg-[#1A1A1A]"></div>
-
-              <p className="text-xs font-serif italic text-[#1A1A1A]/70 leading-relaxed">
-                "언론 보도 빅데이터와 구글 실시간 뉴스 검색, 공간지능 AI 분석 기술을 결합하여 가치 있는 핫플레이스를 탐지하는 뉴스 미디어 기반 로컬 정보 가이드입니다."
-              </p>
-
-              <div className="border border-[#1A1A1A]/10 p-5 bg-[#FCFAF7]/80 rounded-sm w-full space-y-3.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#E63946] flex items-center justify-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>이용 가이드</span>
-                </p>
-                <div className="text-[11px] text-[#1A1A1A]/70 space-y-2 text-left leading-relaxed">
-                  <p className="flex gap-2">
-                    <span className="font-mono font-bold text-[#1A1A1A]">1.</span>
-                    <span>왼쪽 검색창에서 <strong>지역과 테마</strong>를 설정하여 탐색해 보세요.</span>
-                  </p>
-                  <p className="flex gap-2">
-                    <span className="font-mono font-bold text-[#1A1A1A]">2.</span>
-                    <span>실시간 검색 결과 장소 목록에서 특정 핫플을 클릭하면 상세한 기사 분석 정보가 나타납니다.</span>
-                  </p>
-                  <p className="flex gap-2">
-                    <span className="font-mono font-bold text-[#1A1A1A]">3.</span>
-                    <span>가고 싶은 장소는 <strong>별(★) 아이콘</strong>을 눌러 버킷리스트 탭에 저장하고 저장 날짜를 확인하세요.</span>
+                    <a
+                      href={selectedPlace.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full border border-[#1A1A1A]/20 hover:border-[#1A1A1A] bg-transparent text-[#1A1A1A] text-[11px] font-bold uppercase py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-xs rounded-sm hover:bg-[#1A1A1A]/5"
+                    >
+                      <span>원문 기사 읽기</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                  <p className="text-[9px] text-[#1A1A1A]/50 text-center mt-3 leading-normal">
+                    본 정보는 공신 언론 보도를 기반으로 추출되었으며, 네이버 지도 연동 및 원문 기사로 상세 확인이 가능합니다.
                   </p>
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              /* Cover index style when no selectedPlace */
+              <div className="p-6 md:p-8 flex flex-col justify-center items-center text-center my-auto space-y-5 z-10 relative">
+                <div className="space-y-3">
+                  <div className="inline-block border border-[#1A1A1A] px-2.5 py-0.5 text-[9px] uppercase tracking-[0.25em] font-bold text-[#1A1A1A]">
+                    Locus AI • 공간 탐색 지능
+                  </div>
+                  <h1 className="text-3xl font-serif font-black tracking-tight text-[#1A1A1A]">
+                    LOCUS JOURNAL
+                  </h1>
+                  <p className="text-[10px] font-sans tracking-[0.15em] uppercase text-[#1A1A1A]/60 font-semibold">
+                    NEWS-BASED SPATIAL DISCOVERY
+                  </p>
+                </div>
+
+                <div className="h-px w-16 bg-[#1A1A1A]"></div>
+
+                <p className="text-xs font-serif italic text-[#1A1A1A]/70 leading-relaxed max-w-xs">
+                  "언론 보도 빅데이터와 구글 실시간 뉴스 검색, 공간지능 AI 분석 기술을 결합하여 가치 있는 핫플레이스를 탐지하는 뉴스 미디어 기반 로컬 정보 가이드입니다."
+                </p>
+
+                <div className="border border-[#1A1A1A]/10 p-4.5 bg-[#FCFAF7]/80 rounded-sm w-full space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#E63946] flex items-center justify-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>이용 가이드</span>
+                  </p>
+                  <div className="text-[10px] text-[#1A1A1A]/70 space-y-2 text-left leading-relaxed">
+                    <p className="flex gap-1.5">
+                      <span className="font-mono font-bold text-[#1A1A1A]">1.</span>
+                      <span>좌측에서 <strong>지역과 테마</strong>를 설정하여 탐색해 보세요.</span>
+                    </p>
+                    <p className="flex gap-1.5">
+                      <span className="font-mono font-bold text-[#1A1A1A]">2.</span>
+                      <span>실시간 검색 장소 목록 또는 <strong>지도상의 마커</strong>를 클릭하면 기사 분석 정보가 펼쳐집니다.</span>
+                    </p>
+                    <p className="flex gap-1.5">
+                      <span className="font-mono font-bold text-[#1A1A1A]">3.</span>
+                      <span>원하는 장소는 <strong>별(★) 아이콘</strong>을 클릭해 저장하여 보관하세요.</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </section>
       </main>
 
