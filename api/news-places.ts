@@ -76,18 +76,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const { query, region, category, customApiKey } = req.body || {};
-  const clientApiKey = req.headers['x-gemini-key'] || customApiKey;
+  const rawClientApiKey = req.headers['x-gemini-key'] || customApiKey;
 
-  console.log(`[Vercel API] Received request: query='${query}', region='${region}', category='${category}', hasCustomKey=${!!clientApiKey}`);
+  // Validate custom API key string to ignore placeholders or invalid tokens
+  const cleanClientApiKey = typeof rawClientApiKey === 'string' ? rawClientApiKey.trim() : '';
+  const hasValidCustomKey = cleanClientApiKey && 
+    cleanClientApiKey !== "null" && 
+    cleanClientApiKey !== "undefined" && 
+    cleanClientApiKey !== "YOUR_GEMINI_API_KEY" &&
+    cleanClientApiKey.length > 5; // Real Gemini keys are longer (usually start with AIzaSy)
+
+  console.log(`[Vercel API] Received request: query='${query}', region='${region}', category='${category}', hasCustomKey=${hasValidCustomKey}`);
 
   // Determine which active AI client instance to use
   let activeAi = ai;
   let isCustomClient = false;
 
-  if (clientApiKey) {
+  if (hasValidCustomKey) {
     try {
       activeAi = new GoogleGenAI({
-        apiKey: clientApiKey as string,
+        apiKey: cleanClientApiKey,
         httpOptions: {
           headers: {
             'User-Agent': 'aistudio-build',
@@ -338,7 +346,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     let userFriendlyMsg = `💡 최근 1주간 뉴스 미디어 보도 트렌드 데이터를 바탕으로, ${region || "전체"} 지역의 정밀 핫플레이스 공간 데이터 분석 및 수집이 성공적으로 완료되었습니다.`;
     
-    if (clientApiKey) {
+    if (hasValidCustomKey) {
       userFriendlyMsg = `💡 [사용자 API 키 오류] 입력하신 API Key로 실시간 분석 중 오류가 발생했습니다 (${cleanErrorMessage(error)}). 키 설정 및 잔여 크레딧을 점검해 보세요.`;
     } else {
       userFriendlyMsg = `💡 [데모 한도 초과 안내] 공용 데모용 AI API 키의 오늘 사용량이 모두 소진되었습니다. 실시간 최신 뉴스 탐색을 사용하고 싶다면, 상단의 'GEMINI API 설정'에 개인 API Key를 입력해 보세요!`;

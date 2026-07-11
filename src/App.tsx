@@ -44,9 +44,24 @@ export default function App() {
   const [places, setPlaces] = useState<NewsPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<NewsPlace | null>(null);
   
-  // Gemini API Key state
-  const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem("locus_gemini_api_key") || "");
-  const [apiKeyInput, setApiKeyInput] = useState(localStorage.getItem("locus_gemini_api_key") || "");
+  // Gemini API Key state with robust sanitization
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    const saved = localStorage.getItem("locus_gemini_api_key");
+    if (!saved || saved === "null" || saved === "undefined" || saved.trim() === "" || saved === "YOUR_GEMINI_API_KEY") {
+      return "";
+    }
+    return saved;
+  });
+  
+  const [apiKeyInput, setApiKeyInput] = useState(() => {
+    const saved = localStorage.getItem("locus_gemini_api_key");
+    if (!saved || saved === "null" || saved === "undefined" || saved.trim() === "" || saved === "YOUR_GEMINI_API_KEY") {
+      return "";
+    }
+    return saved;
+  });
+
+  const [isApiKeySectionOpen, setIsApiKeySectionOpen] = useState(false);
   const [showKeyGuide, setShowKeyGuide] = useState(false);
   const [keySavedMessage, setKeySavedMessage] = useState("");
 
@@ -310,6 +325,9 @@ export default function App() {
         } else if (data.source === "dynamic_simulation") {
           if (data.message && (data.message.includes("오류") || data.message.includes("한도"))) {
             setWarningMsg(data.message);
+            if (data.message.includes("사용자 API 키")) {
+              setIsApiKeySectionOpen(true);
+            }
           } else {
             setSuccessMsg(data.message || "💡 공간 지능 AI 로컬 분석 모드: 실시간 Gemini API 서버 환경 영향으로, 검색하신 조건에 맞춰 가공된 공간 빅데이터 트렌드 정보를 제공합니다.");
           }
@@ -426,69 +444,77 @@ export default function App() {
           {/* Scrollable controls and list body */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin" id="sidebar-scrollable">
             
-            {/* Gemini API Key Configuration Section */}
-            <div className="bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 p-4 space-y-3 rounded-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#1A1A1A] flex items-center gap-1.5">
+            {/* Gemini API Key Configuration Section (Collapsible Accordion) */}
+            <div className="bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 p-3.5 space-y-3 rounded-sm transition-all duration-300">
+              <div 
+                className="flex items-center justify-between cursor-pointer select-none"
+                onClick={() => setIsApiKeySectionOpen(!isApiKeySectionOpen)}
+              >
+                <div className="flex items-center gap-2">
                   <Key className="w-3.5 h-3.5 text-[#E63946]" />
-                  <span>GEMINI API 설정</span>
-                </h3>
+                  <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#1A1A1A]">GEMINI API 설정</span>
+                  <span className="text-[9px] text-[#1A1A1A]/40 font-mono">
+                    {isApiKeySectionOpen ? "▲ 접기" : "▼ 펼치기"}
+                  </span>
+                </div>
                 <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-xs ${geminiApiKey ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-[#1A1A1A]/10 text-[#1A1A1A]/60"}`}>
                   {geminiApiKey ? "ACTIVE (사용자)" : "SYSTEM (데모)"}
                 </span>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-[#1A1A1A]/60">Gemini API Key 입력</label>
-                  <button 
-                    onClick={() => setShowKeyGuide(!showKeyGuide)}
-                    className="text-[9px] text-[#E63946] font-bold hover:underline flex items-center gap-0.5 cursor-pointer bg-transparent border-none p-0"
-                  >
-                    <HelpCircle className="w-3 h-3" />
-                    <span>키 발급 방법</span>
-                  </button>
-                </div>
-
-                {showKeyGuide && (
-                  <div className="text-[10px] text-[#1A1A1A]/70 bg-white p-2.5 border border-[#1A1A1A]/10 space-y-1 leading-relaxed rounded-xs">
-                    <p className="font-bold text-[#E63946]">발급 방법:</p>
-                    <p>1. <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#1A1A1A] hover:text-[#E63946]">Google AI Studio ↗</a>에 로그인합니다.</p>
-                    <p>2. <strong>'Create API Key'</strong> 또는 <strong>'Get API key'</strong>를 눌러 무료 키를 생성합니다.</p>
-                    <p>3. 생성된 키(AIzaSy...)를 아래 칸에 붙여넣고 [저장]을 누르세요.</p>
-                  </div>
-                )}
-
-                <div className="flex gap-1">
-                  <input
-                    type="password"
-                    placeholder="AIzaSy..."
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    className="flex-1 text-xs bg-white border border-[#1A1A1A]/20 py-2 px-2.5 text-[#1A1A1A] focus:outline-none focus:border-[#1A1A1A] transition-all font-mono"
-                  />
-                  <button
-                    onClick={handleSaveApiKey}
-                    className="bg-[#1A1A1A] text-white hover:bg-[#E63946] text-xs font-bold px-3 py-2 transition-colors cursor-pointer rounded-xs"
-                  >
-                    저장
-                  </button>
-                  {geminiApiKey && (
-                    <button
-                      onClick={handleClearApiKey}
-                      className="border border-[#1A1A1A]/20 hover:border-[#1A1A1A] text-[#1A1A1A] text-[10px] font-bold px-2 py-2 transition-colors cursor-pointer rounded-xs"
+              {isApiKeySectionOpen && (
+                <div className="space-y-2.5 pt-2 border-t border-[#1A1A1A]/10 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-[#1A1A1A]/60">Gemini API Key 입력</label>
+                    <button 
+                      onClick={() => setShowKeyGuide(!showKeyGuide)}
+                      className="text-[9px] text-[#E63946] font-bold hover:underline flex items-center gap-0.5 cursor-pointer bg-transparent border-none p-0"
                     >
-                      해제
+                      <HelpCircle className="w-3 h-3" />
+                      <span>키 발급 방법</span>
                     </button>
+                  </div>
+
+                  {showKeyGuide && (
+                    <div className="text-[10px] text-[#1A1A1A]/70 bg-white p-2.5 border border-[#1A1A1A]/10 space-y-1 leading-relaxed rounded-xs">
+                      <p className="font-bold text-[#E63946]">발급 방법:</p>
+                      <p>1. <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#1A1A1A] hover:text-[#E63946]">Google AI Studio ↗</a>에 로그인합니다.</p>
+                      <p>2. <strong>'Create API Key'</strong> 또는 <strong>'Get API key'</strong>를 눌러 무료 키를 생성합니다.</p>
+                      <p>3. 생성된 키(AIzaSy...)를 아래 칸에 붙여넣고 [저장]을 누르세요.</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-1">
+                    <input
+                      type="password"
+                      placeholder="AIzaSy..."
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      className="flex-1 text-xs bg-white border border-[#1A1A1A]/20 py-2 px-2.5 text-[#1A1A1A] focus:outline-none focus:border-[#1A1A1A] transition-all font-mono"
+                    />
+                    <button
+                      onClick={handleSaveApiKey}
+                      className="bg-[#1A1A1A] text-white hover:bg-[#E63946] text-xs font-bold px-3 py-2 transition-colors cursor-pointer rounded-xs"
+                    >
+                      저장
+                    </button>
+                    {geminiApiKey && (
+                      <button
+                        onClick={handleClearApiKey}
+                        className="border border-[#1A1A1A]/20 hover:border-[#1A1A1A] text-[#1A1A1A] text-[10px] font-bold px-2 py-2 transition-colors cursor-pointer rounded-xs"
+                      >
+                        해제
+                      </button>
+                    )}
+                  </div>
+
+                  {keySavedMessage && (
+                    <p className="text-[10px] text-emerald-700 font-bold mt-1 bg-emerald-50 py-1 px-2 border border-emerald-100 rounded-xs">
+                      ✓ {keySavedMessage}
+                    </p>
                   )}
                 </div>
-
-                {keySavedMessage && (
-                  <p className="text-[10px] text-emerald-700 font-bold mt-1 bg-emerald-50 py-1 px-2 border border-emerald-100 rounded-xs">
-                    ✓ {keySavedMessage}
-                  </p>
-                )}
-              </div>
+              )}
             </div>
 
             {/* Theme & Search Settings Area */}
