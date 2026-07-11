@@ -607,6 +607,33 @@ export default function App() {
                       {errorMsg ? "오류" : warningMsg ? "안내 / 경고" : "완료"}
                     </p>
                     <p className="mt-0.5 opacity-90 text-[11px]">{errorMsg || warningMsg || successMsg}</p>
+                    
+                    {/* Quick-action to clear broken user API Key and use system demo key */}
+                    {((warningMsg && warningMsg.includes("사용자 API 키")) || (errorMsg && errorMsg.includes("사용자 API 키"))) && (
+                      <div className="mt-3 pt-3 border-t border-amber-200/50 space-y-2">
+                        <p className="text-[10px] text-amber-900/80 leading-normal">
+                          💡 입력하신 개인 API Key가 한도초과(429) 되었거나 유효하지 않습니다. 
+                          개인 키를 해제하고 <strong>서버 공용 데모 키(SYSTEM)</strong>로 즉시 전환해서 다시 탐색해 보세요!
+                        </p>
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("locus_gemini_api_key");
+                            setGeminiApiKey("");
+                            setApiKeyInput("");
+                            setWarningMsg("");
+                            setErrorMsg("");
+                            setKeySavedMessage("공용 데모 키(SYSTEM)로 자동 전환되었습니다.");
+                            setTimeout(() => setKeySavedMessage(""), 4000);
+                            
+                            // Re-fetch immediately with empty custom key (which maps to server's key)
+                            fetchPlaces(selectedRegion.value, selectedTheme.suffix, customKeyword);
+                          }}
+                          className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2 px-3 rounded-xs text-[10px] uppercase tracking-wider transition-all cursor-pointer text-center block shadow-xs active:scale-98"
+                        >
+                          공용 SYSTEM 데모 키로 전환 및 즉시 재탐색하기
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
