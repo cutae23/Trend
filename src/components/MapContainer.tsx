@@ -226,6 +226,19 @@ export default function MapContainer({
       {/* Map Element */}
       <div id="map-element" ref={mapContainerRef} className="w-full h-full z-10" />
 
+      {/* Leaflet CDN loading fallback */}
+      {!leafletReady && (
+        <div className="absolute inset-0 bg-[#FCFAF7]/95 backdrop-blur-xs z-30 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 border border-[#E63946]/30 text-[#E63946] flex items-center justify-center text-xl mb-4 font-serif animate-pulse">
+            🗺️
+          </div>
+          <h4 className="font-serif font-bold text-[#1A1A1A] mb-1.5 text-lg">지도 모듈 로드 중...</h4>
+          <p className="text-xs text-[#1A1A1A]/60 max-w-[280px] leading-relaxed">
+            네트워크 연결에 따라 오픈소스 지도(Leaflet CDN) 로딩에 수 초가 소요될 수 있습니다. 만약 계속 로드되지 않는다면 브라우저의 광고 차단 프로그램(AdBlock) 또는 보안/아이프레임 설정을 확인해 주세요.
+          </p>
+        </div>
+      )}
+
       {/* Floating Info Overlay */}
       <div className="absolute top-4 left-4 z-20 bg-[#FCFAF7]/95 backdrop-blur py-2 px-3 border border-[#1A1A1A]/10 flex items-center gap-2 pointer-events-none shadow-xs">
         <span className="flex h-1.5 w-1.5 relative">

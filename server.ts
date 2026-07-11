@@ -517,23 +517,34 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
     }
   }
 
-  // Define full prompt depending on inputs
-  let searchQuery = "최근 1주간 대한민국 인기 뉴스 맛집";
-  if (region) {
-    searchQuery = `최근 1주간 ${region} 인기 뉴스 맛집 핫플레이스 여행지`;
-  }
-  if (query) {
-    searchQuery = `최근 1주간 ${query} 인기 뉴스 장소 맛집 명소`;
-  }
-  if (category) {
-    const categoryMap: Record<string, string> = {
-      "restaurant": "맛집 요리 식당 미식",
-      "cafe": "카페 빵집 디저트 베이커리",
-      "spot": "인기 명소 포토존 핫플레이스 가볼만한곳",
-      "culture": "전시 미술관 박물관 팝업스토어 복합문화공간"
+  // Helper to map English region names to Korean
+  const getKoreanRegionName = (r: string): string => {
+    const mapping: Record<string, string> = {
+      "seoul": "서울",
+      "busan": "부산",
+      "jeju": "제주",
+      "gangwon": "강원"
     };
-    searchQuery += ` (${categoryMap[category] || category})`;
+    const key = (r || "").toLowerCase().trim();
+    return mapping[key] || r || "";
+  };
+
+  const koRegion = getKoreanRegionName(region);
+  let searchQuery = "";
+
+  if (query) {
+    let cleanQuery = query;
+    cleanQuery = cleanQuery.replace(/Seoul/gi, "서울");
+    cleanQuery = cleanQuery.replace(/Busan/gi, "부산");
+    cleanQuery = cleanQuery.replace(/Jeju/gi, "제주");
+    cleanQuery = cleanQuery.replace(/Gangwon/gi, "강원");
+    searchQuery = `${cleanQuery} 뉴스 핫플레이스`;
+  } else {
+    searchQuery = `${koRegion || "대한민국"} 뉴스 핫플레이스 맛집`;
   }
+
+  // Ensure query is concise and contains no duplicate words
+  searchQuery = searchQuery.replace(/\s+/g, " ").trim();
 
   // Fallback check
   const regionLower = (region || "").toLowerCase();
@@ -597,7 +608,7 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
         console.log(`[Attempt ${i + 1}/${attempts.length}] Calling Gemini API with model: ${attempt.model} (${attempt.grounding ? "Grounding" : "Standard"})`);
         
         if (attempt.grounding) {
-          // Grant search grounding a tight timeout of 6.5s to fit in Vercel's 10s limit
+          // Grant search grounding a timeout of 13.0s to allow real-time Google Search to succeed
           response = await withTimeout(
             activeAi.models.generateContent({
               model: attempt.model,
@@ -621,8 +632,8 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
                 tools: [{ googleSearch: {} }]
               }
             }),
-            6500,
-            "Search grounding attempt timed out to prevent Vercel 10s serverless function timeout limit."
+            13000,
+            "Search grounding attempt timed out."
           );
           usedSearchGrounding = true;
           fallbackToNoGrounding = false;

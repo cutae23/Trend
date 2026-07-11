@@ -587,6 +587,11 @@ export default function App() {
                     placeholder="예: 망원동 디저트, 서귀포 맛집"
                     value={customKeyword}
                     onChange={(e) => setCustomKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearch();
+                      }
+                    }}
                     className="w-full text-xs bg-transparent border border-[#1A1A1A]/20 py-2.5 pl-8 pr-3 text-[#1A1A1A] placeholder-[#1A1A1A]/30 focus:outline-none focus:border-[#1A1A1A] transition-all"
                   />
                   <MapPin className="w-3.5 h-3.5 text-[#1A1A1A]/40 absolute left-3 top-3.5" />
