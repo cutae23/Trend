@@ -49,6 +49,45 @@ app.use((req, res, next) => {
   next();
 });
 
+function cleanErrorMessage(err: any): string {
+  if (!err) return "통신 문제 또는 만료된 키";
+  
+  let msg = err.message || String(err);
+  
+  // If the message is a JSON string (sometimes thrown by SDKs), try parsing it
+  if (msg.trim().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(msg);
+      if (parsed.error && parsed.error.message) {
+        msg = parsed.error.message;
+      }
+    } catch (e) {
+      // Ignored, proceed with original msg
+    }
+  }
+  
+  // Translate common Gemini API errors to friendly Korean explanations
+  if (msg.includes("Quota exceeded") || msg.includes("quota") || msg.includes("429")) {
+    return "API 호출 할당량(Quota)이 초과되었습니다. 무료 티어의 분당/일일 한도에 도달했거나 결제(Billing) 설정을 점검해 보세요.";
+  }
+  if (msg.includes("API key not valid") || msg.includes("not valid") || msg.includes("invalid key") || msg.includes("400")) {
+    return "유효하지 않은 API Key입니다. 입력하신 키가 정확한지 확인해 주세요.";
+  }
+  if (msg.includes("API_KEY_INVALID")) {
+    return "API Key가 올바르지 않습니다. 정확히 입력하셨는지 다시 확인해 주세요.";
+  }
+  if (msg.includes("Permission denied") || msg.includes("403")) {
+    return "권한이 없습니다. 해당 모델 및 API 기능의 사용 권한을 확인해 주세요.";
+  }
+  
+  // Shorten extremely long messages
+  if (msg.length > 150) {
+    msg = msg.substring(0, 150) + "...";
+  }
+  
+  return msg;
+}
+
 // Initialize Gemini SDK with API Key if available
 const apiKey = process.env.GEMINI_API_KEY;
 let ai: GoogleGenAI | null = null;
@@ -670,7 +709,7 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
     let userFriendlyMsg = `💡 최근 1주간 뉴스 미디어 보도 트렌드 데이터를 바탕으로, ${region || "전체"} 지역의 정밀 핫플레이스 공간 데이터 분석 및 수집이 성공적으로 완료되었습니다.`;
     
     if (clientApiKey) {
-      userFriendlyMsg = `💡 [사용자 API 키 오류] 입력하신 API Key로 실시간 분석 중 오류가 발생했습니다 (${error.message || "통신 문제 또는 만료된 키"}). 키 설정 및 잔여 크레딧을 점검해 보세요.`;
+      userFriendlyMsg = `💡 [사용자 API 키 오류] 입력하신 API Key로 실시간 분석 중 오류가 발생했습니다 (${cleanErrorMessage(error)}). 키 설정 및 잔여 크레딧을 점검해 보세요.`;
     } else {
       userFriendlyMsg = `💡 [데모 한도 초과 안내] 공용 데모용 AI API 키의 오늘 사용량이 모두 소진되었습니다. 실시간 최신 뉴스 탐색을 사용하고 싶다면, 상단의 'GEMINI API 설정'에 개인 API Key를 입력해 보세요!`;
     }

@@ -239,6 +239,7 @@ export default function App() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [warningMsg, setWarningMsg] = useState("");
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [dataSource, setDataSource] = useState<"cached_simulation" | "gemini_grounding_live" | "error_fallback_simulation" | "">("");
 
@@ -269,6 +270,7 @@ export default function App() {
     setLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
+    setWarningMsg("");
     
     try {
       const response = await fetch("/api/news-places", {
@@ -306,11 +308,15 @@ export default function App() {
         if (data.source === "cached_simulation") {
           setSuccessMsg("사전 수집된 핫플레이스 뉴스를 성공적으로 분석했습니다!");
         } else if (data.source === "dynamic_simulation") {
-          setSuccessMsg(data.message || "💡 공간 지능 AI 로컬 분석 모드: 실시간 Gemini API 서버 환경 영향으로, 검색하신 조건에 맞춰 가공된 공간 빅데이터 트렌드 정보를 제공합니다.");
+          if (data.message && (data.message.includes("오류") || data.message.includes("한도"))) {
+            setWarningMsg(data.message);
+          } else {
+            setSuccessMsg(data.message || "💡 공간 지능 AI 로컬 분석 모드: 실시간 Gemini API 서버 환경 영향으로, 검색하신 조건에 맞춰 가공된 공간 빅데이터 트렌드 정보를 제공합니다.");
+          }
         } else if (data.source === "error_fallback_simulation") {
           setErrorMsg(data.message || "실시간 뉴스 추출 지연으로 사전 수집 데이터를 렌더링했습니다.");
         } else if (data.source === "gemini_live_no_grounding") {
-          setSuccessMsg(data.message || "💡 구글 실시간 검색(Search Grounding) API 한도가 초과되어, Gemini 자체 지식 기반 공간 지능 모델로 즉시 핫플레이스를 분석·대체 생성했습니다!");
+          setWarningMsg(data.message || "💡 구글 실시간 검색(Search Grounding) API 한도가 초과되어, Gemini 자체 지식 기반 공간 지능 모델로 즉시 핫플레이스를 분석·대체 생성했습니다!");
         } else {
           setSuccessMsg("Gemini 실시간 뉴스 검색 및 장소 지오코딩이 완료되었습니다!");
         }
@@ -585,18 +591,22 @@ export default function App() {
               </button>
             </div>
 
-            {/* Error & Success Message Alerts */}
-            {(successMsg || errorMsg) && (
+            {/* Error, Warning & Success Message Alerts */}
+            {(successMsg || warningMsg || errorMsg) && (
               <div className={`p-4 border text-xs leading-relaxed ${
                 errorMsg 
                   ? "bg-[#E63946]/5 border-[#E63946]/20 text-[#E63946]" 
-                  : "bg-emerald-50 border-emerald-100 text-emerald-800"
+                  : warningMsg
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-emerald-50 border-emerald-100 text-emerald-800"
               }`}>
                 <div className="flex gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${warningMsg ? "text-amber-600" : ""}`} />
                   <div className="flex-1">
-                    <p className="font-bold">{errorMsg ? "알림" : "완료"}</p>
-                    <p className="mt-0.5 opacity-90 text-[11px]">{errorMsg || successMsg}</p>
+                    <p className="font-bold">
+                      {errorMsg ? "오류" : warningMsg ? "안내 / 경고" : "완료"}
+                    </p>
+                    <p className="mt-0.5 opacity-90 text-[11px]">{errorMsg || warningMsg || successMsg}</p>
                   </div>
                 </div>
               </div>
