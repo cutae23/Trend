@@ -14,11 +14,15 @@ app.use(express.json());
 app.use((req, res, next) => {
   console.log(`[Express Middleware] Incoming: ${req.method} ${req.url} (OriginalUrl: ${req.originalUrl})`);
   
-  // Vercel rewrites often put the original requested path in 'x-matched-path' or 'x-forwarded-uri'
+  // Vercel rewrites often put the original requested path in headers
+  const vercelForwardedPath = req.headers["x-vercel-forwarded-path"] as string;
   const matchedPath = req.headers["x-matched-path"] as string;
   const forwardedUri = req.headers["x-forwarded-uri"] as string;
   
-  if (matchedPath && matchedPath.startsWith("/api") && req.url !== matchedPath) {
+  if (vercelForwardedPath && vercelForwardedPath.startsWith("/api") && req.url !== vercelForwardedPath) {
+    console.log(`[Express Middleware] Restoring req.url from x-vercel-forwarded-path: ${req.url} -> ${vercelForwardedPath}`);
+    req.url = vercelForwardedPath;
+  } else if (matchedPath && matchedPath.startsWith("/api") && req.url !== matchedPath) {
     console.log(`[Express Middleware] Restoring req.url from x-matched-path: ${req.url} -> ${matchedPath}`);
     req.url = matchedPath;
   } else if (forwardedUri && forwardedUri.startsWith("/api") && req.url !== forwardedUri) {
@@ -27,16 +31,19 @@ app.use((req, res, next) => {
   }
   
   // Fallback: If Vercel rewrote the URL to /api/index.ts or similar, but the original request path is contained in req.originalUrl
-  if ((req.url.includes("/api/index.ts") || req.url.includes("/api/index.js")) && req.originalUrl && req.originalUrl.startsWith("/api")) {
+  if ((req.url.includes("/api/index.ts") || req.url.includes("/api/index.js") || req.url === "/api" || req.url === "/api/") && req.originalUrl && req.originalUrl.startsWith("/api")) {
     console.log(`[Express Middleware] Restoring req.url from req.originalUrl: ${req.url} -> ${req.originalUrl}`);
     req.url = req.originalUrl;
   }
   
+  // Strip query string for path mapping matching if it was appended twice or broken, but keep req.query intact
+  const pathWithoutQuery = req.url.split("?")[0];
+  
   // If the path got stripped of /api, e.g. /news-places, but we registered it as /api/news-places
-  if (req.url === "/news-places") {
-    req.url = "/api/news-places";
-  } else if (req.url === "/config-status") {
-    req.url = "/api/config-status";
+  if (pathWithoutQuery === "/news-places") {
+    req.url = req.url.replace("/news-places", "/api/news-places");
+  } else if (pathWithoutQuery === "/config-status") {
+    req.url = req.url.replace("/config-status", "/api/config-status");
   }
 
   next();
@@ -248,7 +255,7 @@ const MOCK_NEWS_PLACES: Record<string, NewsPlace[]> = {
 };
 
 // API Route to check if a system-level Gemini API key is configured
-app.get("/api/config-status", (req, res) => {
+app.get(["/api/config-status", "/config-status"], (req, res) => {
   res.json({
     hasSystemKey: !!process.env.GEMINI_API_KEY
   });
@@ -398,7 +405,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage = "Timeout
 }
 
 // API Route to fetch places from news using Gemini Search Grounding
-app.post("/api/news-places", async (req, res) => {
+app.post(["/api/news-places", "/news-places"], async (req, res) => {
   const { query, region, category, customApiKey } = req.body;
   const clientApiKey = req.headers['x-gemini-key'] || customApiKey;
   
