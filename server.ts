@@ -10,6 +10,38 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Robust middleware to handle Vercel Serverless Function routing and path rewriting
+app.use((req, res, next) => {
+  console.log(`[Express Middleware] Incoming: ${req.method} ${req.url} (OriginalUrl: ${req.originalUrl})`);
+  
+  // Vercel rewrites often put the original requested path in 'x-matched-path' or 'x-forwarded-uri'
+  const matchedPath = req.headers["x-matched-path"] as string;
+  const forwardedUri = req.headers["x-forwarded-uri"] as string;
+  
+  if (matchedPath && matchedPath.startsWith("/api") && req.url !== matchedPath) {
+    console.log(`[Express Middleware] Restoring req.url from x-matched-path: ${req.url} -> ${matchedPath}`);
+    req.url = matchedPath;
+  } else if (forwardedUri && forwardedUri.startsWith("/api") && req.url !== forwardedUri) {
+    console.log(`[Express Middleware] Restoring req.url from x-forwarded-uri: ${req.url} -> ${forwardedUri}`);
+    req.url = forwardedUri;
+  }
+  
+  // Fallback: If Vercel rewrote the URL to /api/index.ts or similar, but the original request path is contained in req.originalUrl
+  if ((req.url.includes("/api/index.ts") || req.url.includes("/api/index.js")) && req.originalUrl && req.originalUrl.startsWith("/api")) {
+    console.log(`[Express Middleware] Restoring req.url from req.originalUrl: ${req.url} -> ${req.originalUrl}`);
+    req.url = req.originalUrl;
+  }
+  
+  // If the path got stripped of /api, e.g. /news-places, but we registered it as /api/news-places
+  if (req.url === "/news-places") {
+    req.url = "/api/news-places";
+  } else if (req.url === "/config-status") {
+    req.url = "/api/config-status";
+  }
+
+  next();
+});
+
 // Initialize Gemini SDK with API Key if available
 const apiKey = process.env.GEMINI_API_KEY;
 let ai: GoogleGenAI | null = null;
