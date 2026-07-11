@@ -1,4 +1,4 @@
-// Shared Backend Data & Utility Helpers
+// Shared Backend Data & Utility Helpers for Vercel Serverless Functions
 
 export interface NewsPlace {
   id: string;

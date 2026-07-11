@@ -6,7 +6,7 @@ import {
   generateDynamicMockPlaces, 
   withTimeout, 
   NewsPlace 
-} from "../src/shared-backend.js";
+} from "./shared-backend.js";
 
 dotenv.config();
 
@@ -297,7 +297,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Generate dynamic mock places matching region and keyword perfectly
     const dynamicPlaces = generateDynamicMockPlaces(region || "", query || "", category || "");
     
-    const userFriendlyMsg = `💡 최근 1주간 뉴스 미디어 보도 트렌드 데이터를 바탕으로, ${region || "전체"} 지역의 정밀 핫플레이스 공간 데이터 분석 및 수집이 성공적으로 완료되었습니다.`;
+    let userFriendlyMsg = `💡 최근 1주간 뉴스 미디어 보도 트렌드 데이터를 바탕으로, ${region || "전체"} 지역의 정밀 핫플레이스 공간 데이터 분석 및 수집이 성공적으로 완료되었습니다.`;
+    
+    if (clientApiKey) {
+      userFriendlyMsg = `💡 [사용자 API 키 오류] 입력하신 API Key로 실시간 분석 중 오류가 발생했습니다 (${error.message || "통신 문제 또는 만료된 키"}). 키 설정 및 잔여 크레딧을 점검해 보세요.`;
+    } else {
+      userFriendlyMsg = `💡 [데모 한도 초과 안내] 공용 데모용 AI API 키의 오늘 사용량이 모두 소진되었습니다. 실시간 최신 뉴스 탐색을 사용하고 싶다면, 상단의 'GEMINI API 설정'에 개인 API Key를 입력해 보세요!`;
+    }
 
     res.status(200).json({
       success: true,
