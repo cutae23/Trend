@@ -551,12 +551,36 @@ export default function App() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="예: 망원동 디저트, 서귀포 맛집"
+                    placeholder="예: 망원동 디저트, 서귀포 맛집 (입력 후 Enter)"
                     value={customKeyword}
                     onChange={(e) => setCustomKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearch();
+                      }
+                    }}
                     className="w-full text-xs bg-transparent border border-[#1A1A1A]/20 py-2.5 pl-8 pr-3 text-[#1A1A1A] placeholder-[#1A1A1A]/30 focus:outline-none focus:border-[#1A1A1A] transition-all"
                   />
                   <MapPin className="w-3.5 h-3.5 text-[#1A1A1A]/40 absolute left-3 top-3.5" />
+                </div>
+              </div>
+
+              {/* Clickable Keyword Suggestions */}
+              <div className="space-y-1.5 pt-0.5">
+                <span className="text-[9px] uppercase tracking-wider font-bold text-[#1A1A1A]/40 block">추천 키워드 (클릭하여 빠른 검색)</span>
+                <div className="flex flex-wrap gap-1">
+                  {["소금빵", "흑돼지", "우동", "밀락더마켓", "서피비치", "흑임자라떼", "복국", "팝업스토어"].map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        setCustomKeyword(tag);
+                        fetchPlaces(selectedRegion.value, selectedTheme.suffix, tag);
+                      }}
+                      className="text-[10px] bg-white hover:bg-[#1A1A1A]/5 text-[#1A1A1A]/80 hover:text-[#1A1A1A] py-1 px-2 border border-[#1A1A1A]/10 rounded-sm transition-all cursor-pointer"
+                    >
+                      #{tag}
+                    </button>
+                  ))}
                 </div>
               </div>
 

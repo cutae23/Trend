@@ -222,6 +222,20 @@ app.get("/api/config-status", (req, res) => {
   });
 });
 
+// Helper function to generate a stable, deterministic, unique ID based on name and address
+function generateStableId(name: string, address: string): string {
+  const cleanName = (name || "").trim().replace(/\s+/g, "");
+  const cleanAddress = (address || "").trim().replace(/\s+/g, "");
+  const combined = `${cleanName}_${cleanAddress}`;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const chr = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return `place_${Math.abs(hash).toString(36)}`;
+}
+
 // Helper function to generate high-fidelity, customized dynamic mock places when Gemini is rate-limited, quota-exhausted, or has an invalid key
 function generateDynamicMockPlaces(
   regionName: string,
@@ -331,7 +345,7 @@ function generateDynamicMockPlaces(
     const newsSummary = `${regionLabel}에 새롭게 둥지를 튼 이곳은 언론 및 SNS에서 이색적인 테마와 독창적인 감성으로 가득한 필수 여행 코스로 화제를 모으고 있습니다.`;
 
     items.push({
-      id: `dynamic_sim_${i}_${Date.now()}`,
+      id: generateStableId(name, address),
       name,
       category: itemCategory,
       newsTitle,
@@ -378,10 +392,11 @@ app.post("/api/news-places", async (req, res) => {
 
   // Define full prompt depending on inputs
   let searchQuery = "최근 1주간 대한민국 인기 뉴스 맛집";
-  if (region) {
+  if (region && query) {
+    searchQuery = `최근 1주간 ${region} 지역의 ${query} 관련 인기 뉴스 장소 맛집 핫플레이스 명소`;
+  } else if (region) {
     searchQuery = `최근 1주간 ${region} 인기 뉴스 맛집 핫플레이스 여행지`;
-  }
-  if (query) {
+  } else if (query) {
     searchQuery = `최근 1주간 ${query} 인기 뉴스 장소 맛집 명소`;
   }
   if (category) {
@@ -578,7 +593,7 @@ app.post("/api/news-places", async (req, res) => {
 
       return {
         ...place,
-        id: place.id || `gemini_${idx}_${Date.now()}`,
+        id: generateStableId(place.name, place.address),
         latitude: lat,
         longitude: lng,
         url: finalUrl,
