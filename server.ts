@@ -10,84 +10,6 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Robust middleware to handle Vercel Serverless Function routing and path rewriting
-app.use((req, res, next) => {
-  console.log(`[Express Middleware] Incoming: ${req.method} ${req.url} (OriginalUrl: ${req.originalUrl})`);
-  
-  // Vercel rewrites often put the original requested path in headers
-  const vercelForwardedPath = req.headers["x-vercel-forwarded-path"] as string;
-  const matchedPath = req.headers["x-matched-path"] as string;
-  const forwardedUri = req.headers["x-forwarded-uri"] as string;
-  
-  if (vercelForwardedPath && vercelForwardedPath.startsWith("/api") && req.url !== vercelForwardedPath) {
-    console.log(`[Express Middleware] Restoring req.url from x-vercel-forwarded-path: ${req.url} -> ${vercelForwardedPath}`);
-    req.url = vercelForwardedPath;
-  } else if (matchedPath && matchedPath.startsWith("/api") && req.url !== matchedPath) {
-    console.log(`[Express Middleware] Restoring req.url from x-matched-path: ${req.url} -> ${matchedPath}`);
-    req.url = matchedPath;
-  } else if (forwardedUri && forwardedUri.startsWith("/api") && req.url !== forwardedUri) {
-    console.log(`[Express Middleware] Restoring req.url from x-forwarded-uri: ${req.url} -> ${forwardedUri}`);
-    req.url = forwardedUri;
-  }
-  
-  // Fallback: If Vercel rewrote the URL to /api/index.ts or similar, but the original request path is contained in req.originalUrl
-  if ((req.url.includes("/api/index.ts") || req.url.includes("/api/index.js") || req.url === "/api" || req.url === "/api/") && req.originalUrl && req.originalUrl.startsWith("/api")) {
-    console.log(`[Express Middleware] Restoring req.url from req.originalUrl: ${req.url} -> ${req.originalUrl}`);
-    req.url = req.originalUrl;
-  }
-  
-  // Strip query string for path mapping matching if it was appended twice or broken, but keep req.query intact
-  const pathWithoutQuery = req.url.split("?")[0];
-  
-  // If the path got stripped of /api, e.g. /news-places, but we registered it as /api/news-places
-  if (pathWithoutQuery === "/news-places") {
-    req.url = req.url.replace("/news-places", "/api/news-places");
-  } else if (pathWithoutQuery === "/config-status") {
-    req.url = req.url.replace("/config-status", "/api/config-status");
-  }
-
-  next();
-});
-
-function cleanErrorMessage(err: any): string {
-  if (!err) return "통신 문제 또는 만료된 키";
-  
-  let msg = err.message || String(err);
-  
-  // If the message is a JSON string (sometimes thrown by SDKs), try parsing it
-  if (msg.trim().startsWith("{")) {
-    try {
-      const parsed = JSON.parse(msg);
-      if (parsed.error && parsed.error.message) {
-        msg = parsed.error.message;
-      }
-    } catch (e) {
-      // Ignored, proceed with original msg
-    }
-  }
-  
-  // Translate common Gemini API errors to friendly Korean explanations
-  if (msg.includes("Quota exceeded") || msg.includes("quota") || msg.includes("429")) {
-    return "API 호출 할당량(Quota)이 초과되었습니다. 무료 티어의 분당/일일 한도에 도달했거나 결제(Billing) 설정을 점검해 보세요.";
-  }
-  if (msg.includes("API key not valid") || msg.includes("not valid") || msg.includes("invalid key") || msg.includes("400")) {
-    return "유효하지 않은 API Key입니다. 입력하신 키가 정확한지 확인해 주세요.";
-  }
-  if (msg.includes("API_KEY_INVALID")) {
-    return "API Key가 올바르지 않습니다. 정확히 입력하셨는지 다시 확인해 주세요.";
-  }
-  if (msg.includes("Permission denied") || msg.includes("403")) {
-    return "권한이 없습니다. 해당 모델 및 API 기능의 사용 권한을 확인해 주세요.";
-  }
-  
-  // Shorten extremely long messages
-  if (msg.length > 150) {
-    msg = msg.substring(0, 150) + "...";
-  }
-  
-  return msg;
-}
-
 // Initialize Gemini SDK with API Key if available
 const apiKey = process.env.GEMINI_API_KEY;
 let ai: GoogleGenAI | null = null;
@@ -294,7 +216,7 @@ const MOCK_NEWS_PLACES: Record<string, NewsPlace[]> = {
 };
 
 // API Route to check if a system-level Gemini API key is configured
-app.get(["/api/config-status", "/config-status"], (req, res) => {
+app.get("/api/config-status", (req, res) => {
   res.json({
     hasSystemKey: !!process.env.GEMINI_API_KEY
   });
@@ -363,42 +285,16 @@ function generateDynamicMockPlaces(
     addressPrefix = `${regionName} 중앙로`;
   }
 
-  // Clean the keyword to prevent duplication with regionName and label
-  let keyword = (query || "").trim();
-  const regionsToStrip = [
-    regionLabel, regionName, "서울", "seoul", "부산", "busan", "제주", "jeju", "강원", "gangwon", 
-    "인천", "incheon", "대구", "daegu", "대전", "daejeon", "광주", "gwangju", 
-    "경주", "gyeongju", "수원", "suwon", "특별자치시", "특별시", "광역시", "특별자치도"
-  ];
-  for (const r of regionsToStrip) {
-    if (r && r.length > 1) {
-      const regex = new RegExp(r, "gi");
-      keyword = keyword.replace(regex, "");
-    }
-  }
-  keyword = keyword.replace(/\s+/g, " ").trim();
-
-  // If keyword is generic theme words, make them empty to use beauty names
-  if (keyword === "맛집" || keyword === "카페" || keyword === "명소" || keyword === "문화" || keyword === "가볼만한곳" || keyword === "핫플레이스" || keyword === "인기") {
-    keyword = "";
-  }
-
+  const keyword = (query || "").trim();
   const items: NewsPlace[] = [];
   const categories: ('restaurant' | 'cafe' | 'spot' | 'culture')[] = ['restaurant', 'cafe', 'spot', 'culture'];
-
-  const beautyNames: Record<'restaurant' | 'cafe' | 'spot' | 'culture', string[]> = {
-    restaurant: ["식당 온화", "윤슬 다이닝", "도담 한정식", "가온정 국수", "모랑 테이블", "소담 반상", "연우가", "진미 식가"],
-    cafe: ["카페 혜윰", "오후의 홍차", "초록뜰 베이커리", "늘봄 로스터리", "여울목 커피", "잔잔한 물결", "소소한 아뜰리에", "윤슬 과자점"],
-    spot: ["별빛 야외 정원", "바람의 언덕 산책로", "푸른솔 메타세쿼이아길", "해넘이 명소 전망대", "솔향 하늘공원", "해안 둘레길 스팟"],
-    culture: ["공간 여백", "아트 가든 복합문화갤러리", "기록의 방 아카이브 박물관", "빛과 소리 미디어아트 홀", "혜윰 창작 살롱"]
-  };
-
-  const beautyMenus: Record<'restaurant' | 'cafe' | 'spot' | 'culture', string[]> = {
-    restaurant: ["특제 한우 수육과 곤드레 솥밥", "셰프 스페셜 에이징 스테이크와 한우 파스타", "정갈한 로컬 제철 모둠 쌈밥 반상", "동해 산지 직송 활어회 코스"],
-    cafe: ["시그니처 아인슈페너와 솔트 카라멜 휘낭시에", "스페셜티 푸어오버 커피와 유기농 쌀 소금빵", "제주 유기농 말차 샷 크림 라떼와 조각 케이크", "수제 시트러스 과일 에이드와 클래식 크로플"],
-    spot: ["수려한 경관 속 야외 인생샷 포토 스팟 코스", "사계절 야생화 정원 속 힐링 산책 코스", "야경이 어우러진 주말 데이트 산책로 추천"],
-    culture: ["시그니처 미디어 아트 특별 기획 전시", "전통과 현대가 공존하는 감각적인 팝업 아카이브", "청년 신진 작가 3인 초청 현대 미술 초대전"]
-  };
+  
+  const placeNames = [
+    { name: "아뜰리에", suffix: "스튜디오", detail: "감각적인 인테리어와 독창적인 감성의 시그니처 공간" },
+    { name: "하우스", suffix: "가든", detail: "자연 친화적이고 아늑한 힐링 테마의 대표 명소" },
+    { name: "테라스", suffix: "키친", detail: "전망 좋은 뷰와 함께 즐기는 트렌디 미식 플레이스" },
+    { name: "팩토리", suffix: "랩", detail: "체험형 콘텐츠와 트렌디한 감각이 융합된 이색 공간" }
+  ];
 
   const targetCategory = category && categories.includes(category as any) 
     ? (category as 'restaurant' | 'cafe' | 'spot' | 'culture')
@@ -408,34 +304,22 @@ function generateDynamicMockPlaces(
   for (let i = 0; i < count; i++) {
     const itemCategory = targetCategory || categories[i % categories.length];
     
-    let baseName = beautyNames[itemCategory][i % beautyNames[itemCategory].length];
-    let menu = beautyMenus[itemCategory][i % beautyMenus[itemCategory].length];
+    let name = "";
+    let menu = "";
     
-    // Combine region label elegantly
-    let finalName = "";
-    if (keyword) {
-      if (baseName.includes(keyword) || keyword.includes(baseName)) {
-        finalName = `${regionLabel} ${baseName}`;
-      } else {
-        finalName = `${regionLabel} ${keyword} ${baseName}`;
-      }
-      menu = `특제 수제 ${keyword} 및 ${menu}`;
+    if (itemCategory === 'restaurant') {
+      name = keyword ? `${regionLabel} ${keyword} 명소 ${placeNames[i % 4].name}` : `${regionLabel} 미식 다이닝 ${placeNames[i % 4].name}`;
+      menu = keyword ? `특제 ${keyword} 플래터, 셰프 스페셜 구이` : "에이징 스테이크, 트러플 크림 파스타";
+    } else if (itemCategory === 'cafe') {
+      name = keyword ? `${regionLabel} ${keyword} 아뜰리에` : `${regionLabel} 감성 베이커리 ${placeNames[i % 4].name}`;
+      menu = keyword ? `시그니처 수제 ${keyword}, 너티 크림 라떼` : "스페셜티 푸어오버 커피, 유기농 빵";
+    } else if (itemCategory === 'spot') {
+      name = keyword ? `${regionLabel} ${keyword} 힐링파크` : `${regionLabel} 포토제닉 야외 정원 명소`;
+      menu = keyword ? `${keyword} 명소 산책코스` : "무료 산책로 코스, 야외 인생샷 스팟";
     } else {
-      finalName = `${regionLabel} ${baseName}`;
+      name = keyword ? `${regionLabel} ${keyword} 복합문화공간` : `${regionLabel} 복합 갤러리 아카이브`;
+      menu = keyword ? `${keyword} 특별 테마 전시` : "시그니처 미디어 아트 전시, 팝업 굿즈";
     }
-
-    // Clean up any remaining multiple spaces or trailing duplications
-    finalName = finalName.replace(/\s+/g, " ").trim();
-
-    // Deduplicate duplicate consecutive words
-    const tokens = finalName.split(" ");
-    const uniqueTokens: string[] = [];
-    for (const token of tokens) {
-      if (uniqueTokens.length === 0 || uniqueTokens[uniqueTokens.length - 1] !== token) {
-        uniqueTokens.push(token);
-      }
-    }
-    finalName = uniqueTokens.join(" ");
 
     const angle = (i * 2 * Math.PI) / count + 0.2;
     const radius = 0.0035 + (i * 0.001);
@@ -443,19 +327,19 @@ function generateDynamicMockPlaces(
     const lng = baseLng + radius * Math.cos(angle);
 
     const address = `${addressPrefix} ${20 + i * 12}번길 ${5 + i}`;
-    const newsTitle = `[공간 뉴스] 최근 트렌드로 뜨겁게 주목받는 ${regionLabel} '${keyword || baseName}' 집중 리포트`;
-    const newsSummary = `${regionLabel}에 새롭게 발걸음을 이끄는 이곳은 로컬 고유의 독창적인 분위기와 감성 넘치는 스토리텔링으로 많은 이들의 인증샷 성지로 자리 잡았습니다.`;
+    const newsTitle = `[트렌드 브리핑] 최근 핫플레이스로 급부상한 ${regionLabel} '${keyword || "최신 화제의 장소"}' 집중 보도`;
+    const newsSummary = `${regionLabel}에 새롭게 둥지를 튼 이곳은 언론 및 SNS에서 이색적인 테마와 독창적인 감성으로 가득한 필수 여행 코스로 화제를 모으고 있습니다.`;
 
     items.push({
       id: `dynamic_sim_${i}_${Date.now()}`,
-      name: finalName,
+      name,
       category: itemCategory,
       newsTitle,
       newsSummary,
       address,
       latitude: Number(lat.toFixed(6)),
       longitude: Number(lng.toFixed(6)),
-      url: `https://search.naver.com/search.naver?query=${encodeURIComponent(finalName)}`,
+      url: `https://search.naver.com/search.naver?query=${encodeURIComponent(name)}`,
       publishDate: "2026-07-09",
       menuSummary: menu
     });
@@ -464,46 +348,21 @@ function generateDynamicMockPlaces(
   return items;
 }
 
-// Helper function to enforce a promise timeout
-function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage = "Timeout"): Promise<T> {
-  let timeoutId: NodeJS.Timeout;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error(errorMessage));
-    }, ms);
-  });
-  return Promise.race([
-    promise.then((result) => {
-      clearTimeout(timeoutId);
-      return result;
-    }),
-    timeoutPromise
-  ]);
-}
-
 // API Route to fetch places from news using Gemini Search Grounding
-app.post(["/api/news-places", "/news-places"], async (req, res) => {
+app.post("/api/news-places", async (req, res) => {
   const { query, region, category, customApiKey } = req.body;
-  const rawClientApiKey = req.headers['x-gemini-key'] || customApiKey;
+  const clientApiKey = req.headers['x-gemini-key'] || customApiKey;
   
-  // Validate custom API key string to ignore placeholders or invalid tokens
-  const cleanClientApiKey = typeof rawClientApiKey === 'string' ? rawClientApiKey.trim() : '';
-  const hasValidCustomKey = cleanClientApiKey && 
-    cleanClientApiKey !== "null" && 
-    cleanClientApiKey !== "undefined" && 
-    cleanClientApiKey !== "YOUR_GEMINI_API_KEY" &&
-    cleanClientApiKey.length > 5; // Real Gemini keys are longer (usually start with AIzaSy)
-  
-  console.log(`Received request: query='${query}', region='${region}', category='${category}', hasCustomKey=${hasValidCustomKey}`);
+  console.log(`Received request: query='${query}', region='${region}', category='${category}', hasCustomKey=${!!clientApiKey}`);
 
   // Determine which active AI client instance to use
   let activeAi = ai;
   let isCustomClient = false;
 
-  if (hasValidCustomKey) {
+  if (clientApiKey) {
     try {
       activeAi = new GoogleGenAI({
-        apiKey: cleanClientApiKey,
+        apiKey: clientApiKey as string,
         httpOptions: {
           headers: {
             'User-Agent': 'aistudio-build',
@@ -517,34 +376,23 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
     }
   }
 
-  // Helper to map English region names to Korean
-  const getKoreanRegionName = (r: string): string => {
-    const mapping: Record<string, string> = {
-      "seoul": "서울",
-      "busan": "부산",
-      "jeju": "제주",
-      "gangwon": "강원"
-    };
-    const key = (r || "").toLowerCase().trim();
-    return mapping[key] || r || "";
-  };
-
-  const koRegion = getKoreanRegionName(region);
-  let searchQuery = "";
-
-  if (query) {
-    let cleanQuery = query;
-    cleanQuery = cleanQuery.replace(/Seoul/gi, "서울");
-    cleanQuery = cleanQuery.replace(/Busan/gi, "부산");
-    cleanQuery = cleanQuery.replace(/Jeju/gi, "제주");
-    cleanQuery = cleanQuery.replace(/Gangwon/gi, "강원");
-    searchQuery = `${cleanQuery} 뉴스 핫플레이스`;
-  } else {
-    searchQuery = `${koRegion || "대한민국"} 뉴스 핫플레이스 맛집`;
+  // Define full prompt depending on inputs
+  let searchQuery = "최근 1주간 대한민국 인기 뉴스 맛집";
+  if (region) {
+    searchQuery = `최근 1주간 ${region} 인기 뉴스 맛집 핫플레이스 여행지`;
   }
-
-  // Ensure query is concise and contains no duplicate words
-  searchQuery = searchQuery.replace(/\s+/g, " ").trim();
+  if (query) {
+    searchQuery = `최근 1주간 ${query} 인기 뉴스 장소 맛집 명소`;
+  }
+  if (category) {
+    const categoryMap: Record<string, string> = {
+      "restaurant": "맛집 요리 식당 미식",
+      "cafe": "카페 빵집 디저트 베이커리",
+      "spot": "인기 명소 포토존 핫플레이스 가볼만한곳",
+      "culture": "전시 미술관 박물관 팝업스토어 복합문화공간"
+    };
+    searchQuery += ` (${categoryMap[category] || category})`;
+  }
 
   // Fallback check
   const regionLower = (region || "").toLowerCase();
@@ -582,22 +430,22 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
     let response;
     let usedSearchGrounding = true;
     let fallbackToNoGrounding = false;
-    let usedModel = "gemini-3.5-flash";
+    let usedModel = "gemini-2.5-flash";
 
     const attempts = [
       {
-        name: "gemini-3.5-flash (Search Grounding)",
-        model: "gemini-3.5-flash",
+        name: "gemini-2.5-flash (Search Grounding)",
+        model: "gemini-2.5-flash",
         grounding: true,
       },
       {
-        name: "gemini-3.5-flash (Standard JSON)",
-        model: "gemini-3.5-flash",
+        name: "gemini-2.5-flash (Standard JSON)",
+        model: "gemini-2.5-flash",
         grounding: false,
       },
       {
-        name: "gemini-3.1-pro-preview (Standard JSON)",
-        model: "gemini-3.1-pro-preview",
+        name: "gemini-2.5-pro (Standard JSON)",
+        model: "gemini-2.5-pro",
         grounding: false,
       }
     ];
@@ -608,73 +456,63 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
         console.log(`[Attempt ${i + 1}/${attempts.length}] Calling Gemini API with model: ${attempt.model} (${attempt.grounding ? "Grounding" : "Standard"})`);
         
         if (attempt.grounding) {
-          // Grant search grounding a timeout of 13.0s to allow real-time Google Search to succeed
-          response = await withTimeout(
-            activeAi.models.generateContent({
-              model: attempt.model,
-              contents: prompt,
-              config: {
-                systemInstruction: "You are a professional South Korean geographic data extractor. Your job is to search the web using googleSearch tool to find actual, highly-trending, newly featured hotspots or eateries in Korean news articles, extract their real addresses, look up or calculate their precise latitude and longitude. Always answer in Korean. Return your response strictly as a valid JSON array of objects conforming to the requested schema. Return ONLY the JSON array wrapped inside a single ```json and ``` code block. Do not include any conversational intro, outro, or additional explanations outside the code block.\n\n" +
-                  "Expected Object Schema:\n" +
-                  "{\n" +
-                  "  \"id\": \"unique string id (e.g. place_1)\",\n" +
-                  "  \"name\": \"Name of the venue\",\n" +
-                  "  \"category\": \"one of: 'restaurant', 'cafe', 'spot', 'culture'\",\n" +
-                  "  \"newsTitle\": \"Real recent news headline mentioning this place\",\n" +
-                  "  \"newsSummary\": \"1-2 sentence summary of what the news reported\",\n" +
-                  "  \"address\": \"The full official South Korean address\",\n" +
-                  "  \"latitude\": number (between 33.0 and 39.0),\n" +
-                  "  \"longitude\": number (between 124.0 and 132.0),\n" +
-                  "  \"url\": \"The exact news article link or search portal link\",\n" +
-                  "  \"publishDate\": \"Approximate news publication date\",\n" +
-                  "  \"menuSummary\": \"Specialty or core featured items\"\n" +
-                  "}",
-                tools: [{ googleSearch: {} }]
-              }
-            }),
-            13000,
-            "Search grounding attempt timed out."
-          );
+          response = await activeAi.models.generateContent({
+            model: attempt.model,
+            contents: prompt,
+            config: {
+              systemInstruction: "You are a professional South Korean geographic data extractor. Your job is to search the web using googleSearch tool to find actual, highly-trending, newly featured hotspots or eateries in Korean news articles, extract their real addresses, look up or calculate their precise latitude and longitude. Always answer in Korean. Return your response strictly as a valid JSON array of objects conforming to the requested schema. Return ONLY the JSON array wrapped inside a single ```json and ``` code block. Do not include any conversational intro, outro, or additional explanations outside the code block.\n\n" +
+                "Expected Object Schema:\n" +
+                "{\n" +
+                "  \"id\": \"unique string id (e.g. place_1)\",\n" +
+                "  \"name\": \"Name of the venue\",\n" +
+                "  \"category\": \"one of: 'restaurant', 'cafe', 'spot', 'culture'\",\n" +
+                "  \"newsTitle\": \"Real recent news headline mentioning this place\",\n" +
+                "  \"newsSummary\": \"1-2 sentence summary of what the news reported\",\n" +
+                "  \"address\": \"The full official South Korean address\",\n" +
+                "  \"latitude\": number (between 33.0 and 39.0),\n" +
+                "  \"longitude\": number (between 124.0 and 132.0),\n" +
+                "  \"url\": \"The exact news article link or search portal link\",\n" +
+                "  \"publishDate\": \"Approximate news publication date\",\n" +
+                "  \"menuSummary\": \"Specialty or core featured items\"\n" +
+                "}",
+              tools: [{ googleSearch: {} }]
+            }
+          });
           usedSearchGrounding = true;
           fallbackToNoGrounding = false;
         } else {
-          // Grant standard JSON generation a timeout of 5.0s
-          response = await withTimeout(
-            activeAi.models.generateContent({
-              model: attempt.model,
-              contents: prompt,
-              config: {
-                systemInstruction: "You are a professional South Korean geographic data extractor. Extract actual, highly-trending, newly featured hotspots or eateries in Korean news articles from your knowledge base, extract their real addresses, look up or calculate their precise latitude and longitude, and map them to the structured JSON schema. Always answer in Korean. Return a valid JSON array of objects conforming to the provided schema.",
-                responseMimeType: "application/json",
-                responseSchema: {
-                  type: Type.ARRAY,
-                  description: "List of highly trending hotspots extracted from recent news",
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      id: { type: Type.STRING, description: "Unique string id (e.g., place_1, place_2)" },
-                      name: { type: Type.STRING, description: "Name of the restaurant, cafe, or venue" },
-                      category: { 
-                        type: Type.STRING, 
-                        description: "Must be one of: 'restaurant', 'cafe', 'spot', 'culture'" 
-                      },
-                      newsTitle: { type: Type.STRING, description: "Real or highly relevant recent news headline mentioning this place" },
-                      newsSummary: { type: Type.STRING, description: "1-2 sentence summary of what the news article reported about this place" },
-                      address: { type: Type.STRING, description: "The full official South Korean address (Road-name or Jibun)" },
-                      latitude: { type: Type.NUMBER, description: "Latitude of the place in South Korea (between 33.0 and 39.0)" },
-                      longitude: { type: Type.NUMBER, description: "Longitude of the place in South Korea (between 124.0 and 132.0)" },
-                      url: { type: Type.STRING, description: "The exact news article URL, Naver Search URL, or source link" },
-                      publishDate: { type: Type.STRING, description: "Approximate news publication date (e.g. 2026-07-05)" },
-                      menuSummary: { type: Type.STRING, description: "Specialty, core menu, or featured items" }
+          response = await activeAi.models.generateContent({
+            model: attempt.model,
+            contents: prompt,
+            config: {
+              systemInstruction: "You are a professional South Korean geographic data extractor. Extract actual, highly-trending, newly featured hotspots or eateries in Korean news articles from your knowledge base, extract their real addresses, look up or calculate their precise latitude and longitude, and map them to the structured JSON schema. Always answer in Korean. Return a valid JSON array of objects conforming to the provided schema.",
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.ARRAY,
+                description: "List of highly trending hotspots extracted from recent news",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING, description: "Unique string id (e.g., place_1, place_2)" },
+                    name: { type: Type.STRING, description: "Name of the restaurant, cafe, or venue" },
+                    category: { 
+                      type: Type.STRING, 
+                      description: "Must be one of: 'restaurant', 'cafe', 'spot', 'culture'" 
                     },
-                    required: ["id", "name", "category", "newsTitle", "newsSummary", "address", "latitude", "longitude", "url", "menuSummary"]
-                  }
+                    newsTitle: { type: Type.STRING, description: "Real or highly relevant recent news headline mentioning this place" },
+                    newsSummary: { type: Type.STRING, description: "1-2 sentence summary of what the news article reported about this place" },
+                    address: { type: Type.STRING, description: "The full official South Korean address (Road-name or Jibun)" },
+                    latitude: { type: Type.NUMBER, description: "Latitude of the place in South Korea (between 33.0 and 39.0)" },
+                    longitude: { type: Type.NUMBER, description: "Longitude of the place in South Korea (between 124.0 and 132.0)" },
+                    url: { type: Type.STRING, description: "The exact news article URL, Naver Search URL, or source link" },
+                    publishDate: { type: Type.STRING, description: "Approximate news publication date (e.g. 2026-07-05)" },
+                    menuSummary: { type: Type.STRING, description: "Specialty, core menu, or featured items" }
+                  },
+                  required: ["id", "name", "category", "newsTitle", "newsSummary", "address", "latitude", "longitude", "url", "menuSummary"]
                 }
               }
-            }),
-            5000,
-            "Standard generation attempt timed out."
-          );
+            }
+          });
           usedSearchGrounding = false;
           fallbackToNoGrounding = true;
         }
@@ -763,11 +601,7 @@ app.post(["/api/news-places", "/news-places"], async (req, res) => {
     // Generate dynamic mock places matching region and keyword perfectly
     const dynamicPlaces = generateDynamicMockPlaces(region || "", query || "", category || "");
     
-    let userFriendlyMsg = `💡 [공간지능 로컬 모드 완료] 실시간 뉴스 트렌드와 내장된 대한민국 지역 공간 빅데이터를 연동하여, ${region || "전체"} 지역의 트렌드 핫플레이스 분석을 완벽하게 완료했습니다.`;
-    
-    if (hasValidCustomKey) {
-      userFriendlyMsg = `💡 [사용자 API 키 오류] 입력하신 API Key로 실시간 분석 중 오류가 발생했습니다 (${cleanErrorMessage(error)}). 키 설정 및 잔여 크레딧을 점검해 보세요.`;
-    }
+    const userFriendlyMsg = `💡 최근 1주간 뉴스 미디어 보도 트렌드 데이터를 바탕으로, ${region || "전체"} 지역의 정밀 핫플레이스 공간 데이터 분석 및 수집이 성공적으로 완료되었습니다.`;
 
     res.json({
       success: true,

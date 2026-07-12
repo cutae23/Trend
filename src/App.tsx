@@ -22,7 +22,6 @@ import {
   Calendar
 } from "lucide-react";
 import { NewsPlace, CategoryFilter, RegionOption } from "./types";
-import MapContainer from "./components/MapContainer";
 
 // Supported preset regions in South Korea with coordinates
 const REGIONS: RegionOption[] = [
@@ -44,24 +43,9 @@ export default function App() {
   const [places, setPlaces] = useState<NewsPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<NewsPlace | null>(null);
   
-  // Gemini API Key state with robust sanitization
-  const [geminiApiKey, setGeminiApiKey] = useState(() => {
-    const saved = localStorage.getItem("locus_gemini_api_key");
-    if (!saved || saved === "null" || saved === "undefined" || saved.trim() === "" || saved === "YOUR_GEMINI_API_KEY") {
-      return "";
-    }
-    return saved;
-  });
-  
-  const [apiKeyInput, setApiKeyInput] = useState(() => {
-    const saved = localStorage.getItem("locus_gemini_api_key");
-    if (!saved || saved === "null" || saved === "undefined" || saved.trim() === "" || saved === "YOUR_GEMINI_API_KEY") {
-      return "";
-    }
-    return saved;
-  });
-
-  const [isApiKeySectionOpen, setIsApiKeySectionOpen] = useState(false);
+  // Gemini API Key state
+  const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem("locus_gemini_api_key") || "");
+  const [apiKeyInput, setApiKeyInput] = useState(localStorage.getItem("locus_gemini_api_key") || "");
   const [showKeyGuide, setShowKeyGuide] = useState(false);
   const [keySavedMessage, setKeySavedMessage] = useState("");
 
@@ -254,7 +238,6 @@ export default function App() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [warningMsg, setWarningMsg] = useState("");
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [dataSource, setDataSource] = useState<"cached_simulation" | "gemini_grounding_live" | "error_fallback_simulation" | "">("");
 
@@ -281,11 +264,10 @@ export default function App() {
     return () => clearInterval(interval);
   }, [loading]);
 
-  const fetchPlaces = async (regionName: string, themeSuffix: string, customQuery: string, isInitial = false, overrideApiKey?: string) => {
+  const fetchPlaces = async (regionName: string, themeSuffix: string, customQuery: string, isInitial = false) => {
     setLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
-    setWarningMsg("");
     
     try {
       const response = await fetch("/api/news-places", {
@@ -295,7 +277,7 @@ export default function App() {
           region: regionName,
           query: customQuery ? customQuery : `${regionName} ${themeSuffix}`,
           category: activeCategory === "all" ? undefined : activeCategory,
-          customApiKey: overrideApiKey !== undefined ? overrideApiKey : geminiApiKey
+          customApiKey: geminiApiKey
         })
       });
 
@@ -323,18 +305,11 @@ export default function App() {
         if (data.source === "cached_simulation") {
           setSuccessMsg("사전 수집된 핫플레이스 뉴스를 성공적으로 분석했습니다!");
         } else if (data.source === "dynamic_simulation") {
-          if (data.message && (data.message.includes("오류") || data.message.includes("한도"))) {
-            setWarningMsg(data.message);
-            if (data.message.includes("사용자 API 키")) {
-              setIsApiKeySectionOpen(true);
-            }
-          } else {
-            setSuccessMsg(data.message || "💡 공간 지능 AI 로컬 분석 모드: 실시간 Gemini API 서버 환경 영향으로, 검색하신 조건에 맞춰 가공된 공간 빅데이터 트렌드 정보를 제공합니다.");
-          }
+          setSuccessMsg(data.message || "💡 공간 지능 AI 로컬 분석 모드: 실시간 Gemini API 서버 환경 영향으로, 검색하신 조건에 맞춰 가공된 공간 빅데이터 트렌드 정보를 제공합니다.");
         } else if (data.source === "error_fallback_simulation") {
           setErrorMsg(data.message || "실시간 뉴스 추출 지연으로 사전 수집 데이터를 렌더링했습니다.");
         } else if (data.source === "gemini_live_no_grounding") {
-          setWarningMsg(data.message || "💡 구글 실시간 검색(Search Grounding) API 한도가 초과되어, Gemini 자체 지식 기반 공간 지능 모델로 즉시 핫플레이스를 분석·대체 생성했습니다!");
+          setSuccessMsg(data.message || "💡 구글 실시간 검색(Search Grounding) API 한도가 초과되어, Gemini 자체 지식 기반 공간 지능 모델로 즉시 핫플레이스를 분석·대체 생성했습니다!");
         } else {
           setSuccessMsg("Gemini 실시간 뉴스 검색 및 장소 지오코딩이 완료되었습니다!");
         }
@@ -444,77 +419,69 @@ export default function App() {
           {/* Scrollable controls and list body */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin" id="sidebar-scrollable">
             
-            {/* Gemini API Key Configuration Section (Collapsible Accordion) */}
-            <div className="bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 p-3.5 space-y-3 rounded-sm transition-all duration-300">
-              <div 
-                className="flex items-center justify-between cursor-pointer select-none"
-                onClick={() => setIsApiKeySectionOpen(!isApiKeySectionOpen)}
-              >
-                <div className="flex items-center gap-2">
+            {/* Gemini API Key Configuration Section */}
+            <div className="bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 p-4 space-y-3 rounded-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#1A1A1A] flex items-center gap-1.5">
                   <Key className="w-3.5 h-3.5 text-[#E63946]" />
-                  <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#1A1A1A]">GEMINI API 설정</span>
-                  <span className="text-[9px] text-[#1A1A1A]/40 font-mono">
-                    {isApiKeySectionOpen ? "▲ 접기" : "▼ 펼치기"}
-                  </span>
-                </div>
+                  <span>GEMINI API 설정</span>
+                </h3>
                 <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-xs ${geminiApiKey ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-[#1A1A1A]/10 text-[#1A1A1A]/60"}`}>
                   {geminiApiKey ? "ACTIVE (사용자)" : "SYSTEM (데모)"}
                 </span>
               </div>
 
-              {isApiKeySectionOpen && (
-                <div className="space-y-2.5 pt-2 border-t border-[#1A1A1A]/10 mt-1.5" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-bold text-[#1A1A1A]/60">Gemini API Key 입력</label>
-                    <button 
-                      onClick={() => setShowKeyGuide(!showKeyGuide)}
-                      className="text-[9px] text-[#E63946] font-bold hover:underline flex items-center gap-0.5 cursor-pointer bg-transparent border-none p-0"
-                    >
-                      <HelpCircle className="w-3 h-3" />
-                      <span>키 발급 방법</span>
-                    </button>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-[#1A1A1A]/60">Gemini API Key 입력</label>
+                  <button 
+                    onClick={() => setShowKeyGuide(!showKeyGuide)}
+                    className="text-[9px] text-[#E63946] font-bold hover:underline flex items-center gap-0.5 cursor-pointer bg-transparent border-none p-0"
+                  >
+                    <HelpCircle className="w-3 h-3" />
+                    <span>키 발급 방법</span>
+                  </button>
+                </div>
+
+                {showKeyGuide && (
+                  <div className="text-[10px] text-[#1A1A1A]/70 bg-white p-2.5 border border-[#1A1A1A]/10 space-y-1 leading-relaxed rounded-xs">
+                    <p className="font-bold text-[#E63946]">발급 방법:</p>
+                    <p>1. <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#1A1A1A] hover:text-[#E63946]">Google AI Studio ↗</a>에 로그인합니다.</p>
+                    <p>2. <strong>'Create API Key'</strong> 또는 <strong>'Get API key'</strong>를 눌러 무료 키를 생성합니다.</p>
+                    <p>3. 생성된 키(AIzaSy...)를 아래 칸에 붙여넣고 [저장]을 누르세요.</p>
                   </div>
+                )}
 
-                  {showKeyGuide && (
-                    <div className="text-[10px] text-[#1A1A1A]/70 bg-white p-2.5 border border-[#1A1A1A]/10 space-y-1 leading-relaxed rounded-xs">
-                      <p className="font-bold text-[#E63946]">발급 방법:</p>
-                      <p>1. <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#1A1A1A] hover:text-[#E63946]">Google AI Studio ↗</a>에 로그인합니다.</p>
-                      <p>2. <strong>'Create API Key'</strong> 또는 <strong>'Get API key'</strong>를 눌러 무료 키를 생성합니다.</p>
-                      <p>3. 생성된 키(AIzaSy...)를 아래 칸에 붙여넣고 [저장]을 누르세요.</p>
-                    </div>
-                  )}
-
-                  <div className="flex gap-1">
-                    <input
-                      type="password"
-                      placeholder="AIzaSy..."
-                      value={apiKeyInput}
-                      onChange={(e) => setApiKeyInput(e.target.value)}
-                      className="flex-1 text-xs bg-white border border-[#1A1A1A]/20 py-2 px-2.5 text-[#1A1A1A] focus:outline-none focus:border-[#1A1A1A] transition-all font-mono"
-                    />
+                <div className="flex gap-1">
+                  <input
+                    type="password"
+                    placeholder="AIzaSy..."
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    className="flex-1 text-xs bg-white border border-[#1A1A1A]/20 py-2 px-2.5 text-[#1A1A1A] focus:outline-none focus:border-[#1A1A1A] transition-all font-mono"
+                  />
+                  <button
+                    onClick={handleSaveApiKey}
+                    className="bg-[#1A1A1A] text-white hover:bg-[#E63946] text-xs font-bold px-3 py-2 transition-colors cursor-pointer rounded-xs"
+                  >
+                    저장
+                  </button>
+                  {geminiApiKey && (
                     <button
-                      onClick={handleSaveApiKey}
-                      className="bg-[#1A1A1A] text-white hover:bg-[#E63946] text-xs font-bold px-3 py-2 transition-colors cursor-pointer rounded-xs"
+                      onClick={handleClearApiKey}
+                      className="border border-[#1A1A1A]/20 hover:border-[#1A1A1A] text-[#1A1A1A] text-[10px] font-bold px-2 py-2 transition-colors cursor-pointer rounded-xs"
                     >
-                      저장
+                      해제
                     </button>
-                    {geminiApiKey && (
-                      <button
-                        onClick={handleClearApiKey}
-                        className="border border-[#1A1A1A]/20 hover:border-[#1A1A1A] text-[#1A1A1A] text-[10px] font-bold px-2 py-2 transition-colors cursor-pointer rounded-xs"
-                      >
-                        해제
-                      </button>
-                    )}
-                  </div>
-
-                  {keySavedMessage && (
-                    <p className="text-[10px] text-emerald-700 font-bold mt-1 bg-emerald-50 py-1 px-2 border border-emerald-100 rounded-xs">
-                      ✓ {keySavedMessage}
-                    </p>
                   )}
                 </div>
-              )}
+
+                {keySavedMessage && (
+                  <p className="text-[10px] text-emerald-700 font-bold mt-1 bg-emerald-50 py-1 px-2 border border-emerald-100 rounded-xs">
+                    ✓ {keySavedMessage}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Theme & Search Settings Area */}
@@ -587,11 +554,6 @@ export default function App() {
                     placeholder="예: 망원동 디저트, 서귀포 맛집"
                     value={customKeyword}
                     onChange={(e) => setCustomKeyword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSearch();
-                      }
-                    }}
                     className="w-full text-xs bg-transparent border border-[#1A1A1A]/20 py-2.5 pl-8 pr-3 text-[#1A1A1A] placeholder-[#1A1A1A]/30 focus:outline-none focus:border-[#1A1A1A] transition-all"
                   />
                   <MapPin className="w-3.5 h-3.5 text-[#1A1A1A]/40 absolute left-3 top-3.5" />
@@ -622,49 +584,18 @@ export default function App() {
               </button>
             </div>
 
-            {/* Error, Warning & Success Message Alerts */}
-            {(successMsg || warningMsg || errorMsg) && (
+            {/* Error & Success Message Alerts */}
+            {(successMsg || errorMsg) && (
               <div className={`p-4 border text-xs leading-relaxed ${
                 errorMsg 
                   ? "bg-[#E63946]/5 border-[#E63946]/20 text-[#E63946]" 
-                  : warningMsg
-                    ? "bg-amber-50 border-amber-200 text-amber-800"
-                    : "bg-emerald-50 border-emerald-100 text-emerald-800"
+                  : "bg-emerald-50 border-emerald-100 text-emerald-800"
               }`}>
                 <div className="flex gap-2">
-                  <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${warningMsg ? "text-amber-600" : ""}`} />
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-bold">
-                      {errorMsg ? "오류" : warningMsg ? "안내 / 경고" : "완료"}
-                    </p>
-                    <p className="mt-0.5 opacity-90 text-[11px]">{errorMsg || warningMsg || successMsg}</p>
-                    
-                    {/* Quick-action to clear broken user API Key and use system demo key */}
-                    {((warningMsg && warningMsg.includes("사용자 API 키")) || (errorMsg && errorMsg.includes("사용자 API 키"))) && (
-                      <div className="mt-3 pt-3 border-t border-amber-200/50 space-y-2">
-                        <p className="text-[10px] text-amber-900/80 leading-normal">
-                          💡 입력하신 개인 API Key가 한도초과(429) 되었거나 유효하지 않습니다. 
-                          개인 키를 해제하고 <strong>서버 공용 데모 키(SYSTEM)</strong>로 즉시 전환해서 다시 탐색해 보세요!
-                        </p>
-                        <button
-                          onClick={() => {
-                            localStorage.removeItem("locus_gemini_api_key");
-                            setGeminiApiKey("");
-                            setApiKeyInput("");
-                            setWarningMsg("");
-                            setErrorMsg("");
-                            setKeySavedMessage("공용 데모 키(SYSTEM)로 자동 전환되었습니다.");
-                            setTimeout(() => setKeySavedMessage(""), 4000);
-                            
-                            // Re-fetch immediately with empty custom key (which maps to server's key)
-                            fetchPlaces(selectedRegion.value, selectedTheme.suffix, customKeyword, false, "");
-                          }}
-                          className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2 px-3 rounded-xs text-[10px] uppercase tracking-wider transition-all cursor-pointer text-center block shadow-xs active:scale-98"
-                        >
-                          공용 SYSTEM 데모 키로 전환 및 즉시 재탐색하기
-                        </button>
-                      </div>
-                    )}
+                    <p className="font-bold">{errorMsg ? "알림" : "완료"}</p>
+                    <p className="mt-0.5 opacity-90 text-[11px]">{errorMsg || successMsg}</p>
                   </div>
                 </div>
               </div>
@@ -1067,63 +998,52 @@ export default function App() {
 
         </aside>
 
-        {/* Right Section: Interactive Map + Editorial Details Split Panel */}
-        <section className="flex-1 bg-[#FCFAF7] relative overflow-hidden flex flex-col md:flex-row h-full min-h-0" id="editorial-details-panel">
+        {/* Right Section: Interactive Editorial Board Panel (Map Deleted) */}
+        <section className="flex-1 bg-[#FCFAF7] relative overflow-hidden flex flex-col h-full min-h-0" id="editorial-details-panel">
           
-          {/* Left: Interactive Map Container */}
-          <div className="flex-1 h-1/2 md:h-full min-h-[350px] md:min-h-0 relative z-10" id="map-section">
-            <MapContainer
-              places={filteredPlaces}
-              selectedPlace={selectedPlace}
-              onSelectPlace={setSelectedPlace}
-              center={mapCenter}
-              zoom={mapZoom}
-            />
-          </div>
-
-          {/* Right: Scrollable Details / Cover Sidebar */}
-          <div className="w-full md:w-[420px] lg:w-[460px] border-t md:border-t-0 md:border-l border-[#1A1A1A]/10 h-1/2 md:h-full overflow-y-auto flex flex-col bg-[#FCFAF7] shrink-0 relative z-20" id="details-sidebar">
-            {/* Subtle Grid Backdrop for Editorial style */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(#1A1A1A 0.5px, transparent 0.5px)", backgroundSize: "20px 20px" }}></div>
-            
-            {selectedPlace ? (
-              <div className="p-6 overflow-y-auto z-10 relative flex flex-col justify-between h-full space-y-8" id="details-block">
-                <div className="space-y-6">
-                  {/* Header/Category indicator */}
-                  <div className="flex items-center justify-between pb-4 border-b border-[#1A1A1A]/10">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[11px] font-mono uppercase tracking-widest px-2.5 py-1 border ${getCategoryThemeClass(selectedPlace.category)}`}>
-                        {getCategoryLabel(selectedPlace.category)}
-                      </span>
-                      <span className="text-[10px] font-mono text-[#1A1A1A]/50">LAT: {selectedPlace.latitude.toFixed(4)} • LNG: {selectedPlace.longitude.toFixed(4)}</span>
-                    </div>
-                    <button 
-                      onClick={() => setSelectedPlace(null)}
-                      className="text-[#1A1A1A]/50 hover:text-[#E63946] p-1 text-[11px] uppercase font-bold tracking-wider hover:underline cursor-pointer"
-                    >
-                      [ 상세 닫기 ]
-                    </button>
+          {/* Subtle Grid Backdrop for Editorial style */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(#1A1A1A 0.5px, transparent 0.5px)", backgroundSize: "20px 20px" }}></div>
+          
+          {selectedPlace ? (
+            <div className="flex-1 h-full p-6 sm:p-12 overflow-y-auto z-10 relative flex flex-col justify-between max-w-4xl mx-auto w-full space-y-8" id="details-block">
+              <div className="space-y-8">
+                {/* Header/Category indicator */}
+                <div className="flex items-center justify-between pb-4 border-b border-[#1A1A1A]/10">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-mono uppercase tracking-widest px-2.5 py-1 border ${getCategoryThemeClass(selectedPlace.category)}`}>
+                      {getCategoryLabel(selectedPlace.category)}
+                    </span>
+                    <span className="text-[10px] font-mono text-[#1A1A1A]/50">LAT: {selectedPlace.latitude.toFixed(4)} • LNG: {selectedPlace.longitude.toFixed(4)}</span>
                   </div>
+                  <button 
+                    onClick={() => setSelectedPlace(null)}
+                    className="text-[#1A1A1A]/50 hover:text-[#E63946] p-1 text-[11px] uppercase font-bold tracking-wider hover:underline cursor-pointer"
+                  >
+                    [ 상세 닫기 ]
+                  </button>
+                </div>
 
-                  {/* Main Name & Signature */}
-                  <div className="space-y-3">
-                    <span className="text-[11px] font-mono text-[#E63946] font-bold tracking-widest uppercase block">SELECTED TREND HOTSPOT</span>
-                    <h2 className="text-3xl font-serif font-black tracking-tight text-[#1A1A1A] leading-tight">
-                      {selectedPlace.name}
-                    </h2>
-                    <div className="inline-block bg-[#E63946]/5 border border-[#E63946]/10 px-4 py-2.5 rounded-sm">
-                      <p className="text-xs font-serif italic text-[#E63946] font-bold leading-normal">
-                        ✨ 시그니처 메뉴/특징: {selectedPlace.menuSummary}
-                      </p>
-                    </div>
+                {/* Main Name & Signature */}
+                <div className="space-y-3">
+                  <span className="text-[11px] font-mono text-[#E63946] font-bold tracking-widest uppercase block">SELECTED TREND HOTSPOT</span>
+                  <h2 className="text-4xl sm:text-5xl font-serif font-black tracking-tight text-[#1A1A1A] leading-tight">
+                    {selectedPlace.name}
+                  </h2>
+                  <div className="inline-block bg-[#E63946]/5 border border-[#E63946]/10 px-4 py-2.5 rounded-sm">
+                    <p className="text-sm font-serif italic text-[#E63946] font-bold">
+                      ✨ 시그니처 메뉴/특징: {selectedPlace.menuSummary}
+                    </p>
                   </div>
+                </div>
 
-                  {/* Address & Info */}
-                  <div className="space-y-4 pt-2">
-                    <div className="space-y-1.5">
+                {/* Grid for Two Columns: Info & Media */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                  {/* Left Column: Address & Details */}
+                  <div className="space-y-6">
+                    <div className="space-y-2">
                       <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">공식 등록 주소</span>
                       <div className="border border-[#1A1A1A]/10 p-4 bg-white/50 backdrop-blur-xs space-y-3 rounded-sm">
-                        <p className="text-xs font-sans text-[#1A1A1A]/80 leading-relaxed font-semibold">
+                        <p className="text-sm font-sans text-[#1A1A1A]/80 leading-relaxed font-semibold">
                           {selectedPlace.address}
                         </p>
                         <button
@@ -1145,7 +1065,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">공간 분류 정보</span>
                       <div className="border border-[#1A1A1A]/10 p-4 bg-white/50 backdrop-blur-xs rounded-sm space-y-2 text-xs text-[#1A1A1A]/80">
                         <div className="flex justify-between pb-1.5 border-b border-[#1A1A1A]/5">
@@ -1158,111 +1078,111 @@ export default function App() {
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Media Analysis */}
-                    <div className="space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">언론 보도 심층 분석</span>
-                      <div className="bg-[#E63946]/5 border-l-4 border-l-[#E63946] p-4.5 space-y-2.5 rounded-r-sm">
-                        <h4 className="text-xs font-bold font-serif text-[#1A1A1A] leading-snug">
-                          "{selectedPlace.newsTitle}"
-                        </h4>
-                        <p className="text-[11px] text-[#1A1A1A]/80 leading-relaxed font-sans">
-                          {selectedPlace.newsSummary}
-                        </p>
-                      </div>
+                  {/* Right Column: Media Analysis */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">언론 보도 심층 분석</span>
+                    <div className="bg-[#E63946]/5 border-l-4 border-l-[#E63946] p-5 space-y-3 h-full rounded-r-sm">
+                      <h4 className="text-sm font-bold font-serif text-[#1A1A1A] leading-snug">
+                        "{selectedPlace.newsTitle}"
+                      </h4>
+                      <p className="text-xs text-[#1A1A1A]/80 leading-relaxed font-sans">
+                        {selectedPlace.newsSummary}
+                      </p>
                     </div>
                   </div>
                 </div>
-
-                {/* Action Buttons Panel */}
-                <div className="pt-6 border-t border-[#1A1A1A]/10 mt-auto">
-                  <div className="flex flex-col gap-2">
-                    <a
-                      href={`https://map.naver.com/v5/search/${encodeURIComponent(selectedPlace.name)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-[#03C75A] hover:bg-[#02b350] text-white text-[11px] font-bold py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm"
-                    >
-                      <span>네이버 지도에서 위치 확인</span>
-                      <MapPin className="w-4 h-4" />
-                    </a>
-
-                    <button
-                      onClick={() => toggleBucketList(selectedPlace)}
-                      className={`w-full text-[11px] font-bold py-3 px-4 tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm cursor-pointer ${
-                        bucketList.some(b => b.id === selectedPlace.id)
-                          ? "bg-[#E63946] hover:bg-[#d62836] text-white"
-                          : "border border-[#1A1A1A]/20 hover:border-[#1A1A1A] hover:bg-[#1A1A1A]/5 bg-white text-[#1A1A1A]"
-                      }`}
-                    >
-                      <Star className={`w-4 h-4 ${bucketList.some(b => b.id === selectedPlace.id) ? "fill-white text-white" : "text-[#1A1A1A]/60"}`} />
-                      <span>
-                        {bucketList.some(b => b.id === selectedPlace.id)
-                          ? "버킷리스트에서 제거"
-                          : "버킷리스트 추가"
-                        }
-                      </span>
-                    </button>
-
-                    <a
-                      href={selectedPlace.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full border border-[#1A1A1A]/20 hover:border-[#1A1A1A] bg-transparent text-[#1A1A1A] text-[11px] font-bold uppercase py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-xs rounded-sm hover:bg-[#1A1A1A]/5"
-                    >
-                      <span>원문 기사 읽기</span>
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                  <p className="text-[9px] text-[#1A1A1A]/50 text-center mt-3 leading-normal">
-                    본 정보는 공신 언론 보도를 기반으로 추출되었으며, 네이버 지도 연동 및 원문 기사로 상세 확인이 가능합니다.
-                  </p>
-                </div>
               </div>
-            ) : (
-              /* Cover index style when no selectedPlace */
-              <div className="p-6 md:p-8 flex flex-col justify-center items-center text-center my-auto space-y-5 z-10 relative">
-                <div className="space-y-3">
-                  <div className="inline-block border border-[#1A1A1A] px-2.5 py-0.5 text-[9px] uppercase tracking-[0.25em] font-bold text-[#1A1A1A]">
-                    Locus AI • 공간 탐색 지능
-                  </div>
-                  <h1 className="text-3xl font-serif font-black tracking-tight text-[#1A1A1A]">
-                    LOCUS JOURNAL
-                  </h1>
-                  <p className="text-[10px] font-sans tracking-[0.15em] uppercase text-[#1A1A1A]/60 font-semibold">
-                    NEWS-BASED SPATIAL DISCOVERY
-                  </p>
+
+              {/* Action Buttons Panel */}
+              <div className="pt-6 border-t border-[#1A1A1A]/10">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <a
+                    href={`https://map.naver.com/v5/search/${encodeURIComponent(selectedPlace.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-[#03C75A] hover:bg-[#02b350] text-white text-xs font-bold py-3.5 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm"
+                  >
+                    <span>네이버 지도에서 위치 확인</span>
+                    <MapPin className="w-4 h-4" />
+                  </a>
+
+                  <button
+                    onClick={() => toggleBucketList(selectedPlace)}
+                    className={`text-xs font-bold py-3.5 px-4 tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm cursor-pointer ${
+                      bucketList.some(b => b.id === selectedPlace.id)
+                        ? "bg-[#E63946] hover:bg-[#d62836] text-white"
+                        : "border border-[#1A1A1A]/20 hover:border-[#1A1A1A] hover:bg-[#1A1A1A]/5 bg-white text-[#1A1A1A]"
+                    }`}
+                  >
+                    <Star className={`w-4 h-4 ${bucketList.some(b => b.id === selectedPlace.id) ? "fill-white text-white" : "text-[#1A1A1A]/60"}`} />
+                    <span>
+                      {bucketList.some(b => b.id === selectedPlace.id)
+                        ? "버킷리스트에서 제거"
+                        : "버킷리스트 추가"
+                      }
+                    </span>
+                  </button>
+
+                  <a
+                    href={selectedPlace.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="border border-[#1A1A1A]/20 hover:border-[#1A1A1A] bg-transparent text-[#1A1A1A] text-xs font-bold uppercase py-3 px-4 text-center tracking-widest flex items-center justify-center gap-2 transition-all shadow-xs rounded-sm hover:bg-[#1A1A1A]/5"
+                  >
+                    <span>원문 기사 읽기</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
                 </div>
-
-                <div className="h-px w-16 bg-[#1A1A1A]"></div>
-
-                <p className="text-xs font-serif italic text-[#1A1A1A]/70 leading-relaxed max-w-xs">
-                  "언론 보도 빅데이터와 구글 실시간 뉴스 검색, 공간지능 AI 분석 기술을 결합하여 가치 있는 핫플레이스를 탐지하는 뉴스 미디어 기반 로컬 정보 가이드입니다."
+                <p className="text-[10px] text-[#1A1A1A]/50 text-center mt-4 leading-normal">
+                  본 정보는 공신 언론 보도를 기반으로 추출되었으며, 네이버 지도 연동 및 원문 기사로 상세 확인이 가능합니다.
                 </p>
+              </div>
+            </div>
+          ) : (
+            /* Cover index style when no selectedPlace */
+            <div className="flex-1 flex flex-col justify-center items-center p-8 text-center max-w-xl mx-auto space-y-6 z-10 relative">
+              <div className="space-y-4">
+                <div className="inline-block border border-[#1A1A1A] px-3 py-1 text-[10px] uppercase tracking-[0.25em] font-bold text-[#1A1A1A]">
+                  Locus AI • 공간 탐색 지능
+                </div>
+                <h1 className="text-4xl sm:text-5xl font-serif font-black tracking-tight text-[#1A1A1A]">
+                  LOCUS JOURNAL
+                </h1>
+                <p className="text-xs font-sans tracking-[0.15em] uppercase text-[#1A1A1A]/60 font-semibold">
+                  NEWS-BASED SPATIAL DISCOVERY ENGINE
+                </p>
+              </div>
 
-                <div className="border border-[#1A1A1A]/10 p-4.5 bg-[#FCFAF7]/80 rounded-sm w-full space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#E63946] flex items-center justify-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>이용 가이드</span>
+              <div className="h-px w-24 bg-[#1A1A1A]"></div>
+
+              <p className="text-xs font-serif italic text-[#1A1A1A]/70 leading-relaxed">
+                "언론 보도 빅데이터와 구글 실시간 뉴스 검색, 공간지능 AI 분석 기술을 결합하여 가치 있는 핫플레이스를 탐지하는 뉴스 미디어 기반 로컬 정보 가이드입니다."
+              </p>
+
+              <div className="border border-[#1A1A1A]/10 p-5 bg-[#FCFAF7]/80 rounded-sm w-full space-y-3.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#E63946] flex items-center justify-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>이용 가이드</span>
+                </p>
+                <div className="text-[11px] text-[#1A1A1A]/70 space-y-2 text-left leading-relaxed">
+                  <p className="flex gap-2">
+                    <span className="font-mono font-bold text-[#1A1A1A]">1.</span>
+                    <span>왼쪽 검색창에서 <strong>지역과 테마</strong>를 설정하여 탐색해 보세요.</span>
                   </p>
-                  <div className="text-[10px] text-[#1A1A1A]/70 space-y-2 text-left leading-relaxed">
-                    <p className="flex gap-1.5">
-                      <span className="font-mono font-bold text-[#1A1A1A]">1.</span>
-                      <span>좌측에서 <strong>지역과 테마</strong>를 설정하여 탐색해 보세요.</span>
-                    </p>
-                    <p className="flex gap-1.5">
-                      <span className="font-mono font-bold text-[#1A1A1A]">2.</span>
-                      <span>실시간 검색 장소 목록 또는 <strong>지도상의 마커</strong>를 클릭하면 기사 분석 정보가 펼쳐집니다.</span>
-                    </p>
-                    <p className="flex gap-1.5">
-                      <span className="font-mono font-bold text-[#1A1A1A]">3.</span>
-                      <span>원하는 장소는 <strong>별(★) 아이콘</strong>을 클릭해 저장하여 보관하세요.</span>
-                    </p>
-                  </div>
+                  <p className="flex gap-2">
+                    <span className="font-mono font-bold text-[#1A1A1A]">2.</span>
+                    <span>실시간 검색 결과 장소 목록에서 특정 핫플을 클릭하면 상세한 기사 분석 정보가 나타납니다.</span>
+                  </p>
+                  <p className="flex gap-2">
+                    <span className="font-mono font-bold text-[#1A1A1A]">3.</span>
+                    <span>가고 싶은 장소는 <strong>별(★) 아이콘</strong>을 눌러 버킷리스트 탭에 저장하고 저장 날짜를 확인하세요.</span>
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </section>
       </main>
 
