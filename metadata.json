@@ -1,5 +1,5 @@
 {
-  "name": "인기 뉴스 맛집 지도",
+  "name": "Trended",
   "description": "최근 1주간의 인기 뉴스에서 장소(맛집, 카페, 명소) 정보를 추출하여 지도에 시각화해 주는 서비스입니다.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

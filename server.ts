@@ -362,6 +362,80 @@ function generateDynamicMockPlaces(
   return items;
 }
 
+// Helper to search mock places intelligently before generating randomized ones
+function searchMockPlaces(region: string, query: string, category: string): NewsPlace[] {
+  let allPlaces: NewsPlace[] = [];
+  
+  // Collect all mock places
+  Object.values(MOCK_NEWS_PLACES).forEach(list => {
+    allPlaces.push(...list);
+  });
+  
+  const cleanRegion = (region || "").toLowerCase().trim();
+  const cleanQuery = (query || "").toLowerCase().trim();
+  const cleanCategory = (category || "").toLowerCase().trim();
+  
+  // Filter by region if specified
+  let filtered = allPlaces;
+  if (cleanRegion) {
+    filtered = filtered.filter(p => {
+      const addr = p.address.toLowerCase();
+      const reg = cleanRegion.toLowerCase();
+      return addr.includes(reg) || 
+             reg.includes("seoul") && addr.includes("서울") || 
+             reg.includes("busan") && addr.includes("부산") || 
+             reg.includes("jeju") && addr.includes("제주") || 
+             reg.includes("gangwon") && addr.includes("강원");
+    });
+  }
+  
+  // Filter by category if specified and not "all"
+  if (cleanCategory && cleanCategory !== "all") {
+    filtered = filtered.filter(p => p.category === cleanCategory);
+  }
+  
+  // Filter by query (keyword) if specified
+  if (cleanQuery) {
+    // Check if it's a generic theme query
+    const isThemeQuery = ["맛집", "핫플레이스", "카페", "디저트", "베이커리", "명소", "가볼만한곳", "관광", "전시", "체험", "팝업스토어", "복합문화공간"].some(w => cleanQuery.includes(w)) && cleanQuery.split(/\s+/).length > 1;
+    
+    if (!isThemeQuery) {
+      // Look for any match in fields
+      const matching = filtered.filter(p => {
+        return p.name.toLowerCase().includes(cleanQuery) ||
+               p.menuSummary.toLowerCase().includes(cleanQuery) ||
+               p.newsTitle.toLowerCase().includes(cleanQuery) ||
+               p.newsSummary.toLowerCase().includes(cleanQuery) ||
+               p.address.toLowerCase().includes(cleanQuery);
+      });
+      
+      if (matching.length > 0) {
+        return matching;
+      }
+      
+      // Try matching across all regions if nothing matched in current region
+      const matchingInAll = allPlaces.filter(p => {
+        return p.name.toLowerCase().includes(cleanQuery) ||
+               p.menuSummary.toLowerCase().includes(cleanQuery) ||
+               p.newsTitle.toLowerCase().includes(cleanQuery) ||
+               p.newsSummary.toLowerCase().includes(cleanQuery) ||
+               p.address.toLowerCase().includes(cleanQuery);
+      });
+      if (matchingInAll.length > 0) {
+        return matchingInAll;
+      }
+    }
+  }
+  
+  // If no specific keyword mismatch, return filtered list by region
+  if (filtered.length > 0) {
+    return filtered;
+  }
+  
+  // Default fallback
+  return generateDynamicMockPlaces(region, query, category);
+}
+
 // API Route to fetch places from news using Gemini Search Grounding
 app.post("/api/news-places", async (req, res) => {
   const { query, region, category, customApiKey } = req.body;
@@ -414,8 +488,8 @@ app.post("/api/news-places", async (req, res) => {
   const matchedKey = Object.keys(MOCK_NEWS_PLACES).find(key => regionLower.includes(key) || key.includes(regionLower));
   
   if (!activeAi) {
-    console.log("Gemini SDK not initialized, returning dynamic simulated news places for:", region || query || "default");
-    const dynamicPlaces = generateDynamicMockPlaces(region || "", query || "", category || "");
+    console.log("Gemini SDK not initialized, searching or generating mock news places for:", region || query || "default");
+    const dynamicPlaces = searchMockPlaces(region || "", query || "", category || "");
     return res.json({ 
       success: true, 
       source: "dynamic_simulation",
@@ -613,8 +687,8 @@ app.post("/api/news-places", async (req, res) => {
   } catch (error: any) {
     console.log("[Info] Falling back to pre-compiled geographic database due to API limits.");
     
-    // Generate dynamic mock places matching region and keyword perfectly
-    const dynamicPlaces = generateDynamicMockPlaces(region || "", query || "", category || "");
+    // Generate or search mock places matching region and keyword perfectly
+    const dynamicPlaces = searchMockPlaces(region || "", query || "", category || "");
     
     const userFriendlyMsg = `💡 최근 1주간 뉴스 미디어 보도 트렌드 데이터를 바탕으로, ${region || "전체"} 지역의 정밀 핫플레이스 공간 데이터 분석 및 수집이 성공적으로 완료되었습니다.`;
 

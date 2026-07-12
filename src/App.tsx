@@ -351,10 +351,10 @@ export default function App() {
   // Category Icon Mapper
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "restaurant": return <Utensils className="w-3 h-3 text-[#E63946]" />;
+      case "restaurant": return <Utensils className="w-3 h-3 text-[#FF6B00]" />;
       case "cafe": return <Coffee className="w-3 h-3 text-[#1A1A1A]" />;
       case "spot": return <Compass className="w-3 h-3 text-[#1A1A1A]" />;
-      case "culture": return <Palette className="w-3 h-3 text-[#E63946]" />;
+      case "culture": return <Palette className="w-3 h-3 text-[#FF6B00]" />;
       default: return <MapPin className="w-3 h-3 text-[#1A1A1A]" />;
     }
   };
@@ -373,10 +373,10 @@ export default function App() {
   // Category Theme classes mapper following Editorial style
   const getCategoryThemeClass = (category: string) => {
     switch (category) {
-      case "restaurant": return "bg-[#E63946] text-white border-[#E63946]";
+      case "restaurant": return "bg-[#FF6B00] text-white border-[#FF6B00]";
       case "cafe": return "bg-[#1A1A1A] text-white border-[#1A1A1A]";
       case "spot": return "bg-transparent text-[#1A1A1A] border-[#1A1A1A]";
-      case "culture": return "bg-transparent text-[#E63946] border-[#E63946]";
+      case "culture": return "bg-transparent text-[#FF6B00] border-[#FF6B00]";
       default: return "bg-transparent text-[#1A1A1A] border-[#1A1A1A]/30";
     }
   };
@@ -391,15 +391,21 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen bg-[#FCFAF7] text-[#1A1A1A] font-sans overflow-hidden" id="app-root">
       
-      {/* 1. Header (LOCUS NEWS Editorial layout) */}
+      {/* 1. Header (Trended Editorial layout) */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end px-6 sm:px-10 pt-6 pb-4 border-b border-[#1A1A1A]/10 bg-[#FCFAF7]" id="app-header">
-        <div>
-          <h1 className="text-4xl sm:text-5xl font-serif font-black tracking-tighter leading-none text-[#1A1A1A]">
-            LOCUS<span className="italic font-light text-[#E63946]">NEWS</span> MAP
-          </h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-bold mt-2 text-[#1A1A1A]/60">
-            The Weekly Spatial Intelligence Report & Hotspots
-          </p>
+        <div className="flex items-center gap-3">
+          {/* Vivid Orange Icon */}
+          <div className="w-10 h-10 bg-[#FF6B00] rounded-sm flex items-center justify-center text-white font-serif font-black text-2xl shadow-[3px_3px_0px_0px_#1A1A1A] border-2 border-[#1A1A1A]">
+            T
+          </div>
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-serif font-black tracking-tighter leading-none text-[#1A1A1A]">
+              Trended<span className="italic font-light text-[#FF6B00]">.</span>
+            </h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-bold mt-1 text-[#1A1A1A]/60">
+              The Weekly Spatial Intelligence Report & Hotspots
+            </p>
+          </div>
         </div>
         
         <div className="flex gap-8 items-baseline mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
@@ -423,7 +429,7 @@ export default function App() {
             <div className="bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 p-4 space-y-3 rounded-sm">
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#1A1A1A] flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-[#E63946]" />
+                  <Key className="w-3.5 h-3.5 text-[#FF6B00]" />
                   <span>GEMINI API 설정</span>
                 </h3>
                 <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-xs ${geminiApiKey ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-[#1A1A1A]/10 text-[#1A1A1A]/60"}`}>
@@ -436,7 +442,7 @@ export default function App() {
                   <label className="text-[10px] font-bold text-[#1A1A1A]/60">Gemini API Key 입력</label>
                   <button 
                     onClick={() => setShowKeyGuide(!showKeyGuide)}
-                    className="text-[9px] text-[#E63946] font-bold hover:underline flex items-center gap-0.5 cursor-pointer bg-transparent border-none p-0"
+                    className="text-[9px] text-[#FF6B00] font-bold hover:underline flex items-center gap-0.5 cursor-pointer bg-transparent border-none p-0"
                   >
                     <HelpCircle className="w-3 h-3" />
                     <span>키 발급 방법</span>
@@ -445,8 +451,8 @@ export default function App() {
 
                 {showKeyGuide && (
                   <div className="text-[10px] text-[#1A1A1A]/70 bg-white p-2.5 border border-[#1A1A1A]/10 space-y-1 leading-relaxed rounded-xs">
-                    <p className="font-bold text-[#E63946]">발급 방법:</p>
-                    <p>1. <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#1A1A1A] hover:text-[#E63946]">Google AI Studio ↗</a>에 로그인합니다.</p>
+                    <p className="font-bold text-[#FF6B00]">발급 방법:</p>
+                    <p>1. <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#1A1A1A] hover:text-[#FF6B00]">Google AI Studio ↗</a>에 로그인합니다.</p>
                     <p>2. <strong>'Create API Key'</strong> 또는 <strong>'Get API key'</strong>를 눌러 무료 키를 생성합니다.</p>
                     <p>3. 생성된 키(AIzaSy...)를 아래 칸에 붙여넣고 [저장]을 누르세요.</p>
                   </div>
@@ -462,7 +468,7 @@ export default function App() {
                   />
                   <button
                     onClick={handleSaveApiKey}
-                    className="bg-[#1A1A1A] text-white hover:bg-[#E63946] text-xs font-bold px-3 py-2 transition-colors cursor-pointer rounded-xs"
+                    className="bg-[#1A1A1A] text-white hover:bg-[#FF6B00] text-xs font-bold px-3 py-2 transition-colors cursor-pointer rounded-xs"
                   >
                     저장
                   </button>
@@ -486,7 +492,7 @@ export default function App() {
 
             {/* Theme & Search Settings Area */}
             <div className="space-y-4">
-              <h2 className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#E63946] flex items-center gap-1.5">
+              <h2 className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#FF6B00] flex items-center gap-1.5">
                 <Search className="w-3.5 h-3.5" />
                 <span>SPATIAL EXTRACTOR</span>
               </h2>
@@ -591,7 +597,7 @@ export default function App() {
                 className={`w-full py-3 px-4 text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   loading
                     ? "bg-slate-200 text-slate-400 border border-slate-200 cursor-not-allowed"
-                    : "bg-[#1A1A1A] text-[#FCFAF7] hover:bg-[#E63946] active:scale-98"
+                    : "bg-[#1A1A1A] text-[#FCFAF7] hover:bg-[#FF6B00] active:scale-98"
                 }`}
               >
                 {loading ? (
@@ -612,7 +618,7 @@ export default function App() {
             {(successMsg || errorMsg) && (
               <div className={`p-4 border text-xs leading-relaxed ${
                 errorMsg 
-                  ? "bg-[#E63946]/5 border-[#E63946]/20 text-[#E63946]" 
+                  ? "bg-[#FF6B00]/5 border-[#FF6B00]/20 text-[#FF6B00]" 
                   : "bg-emerald-50 border-emerald-100 text-emerald-800"
               }`}>
                 <div className="flex gap-2">
@@ -634,7 +640,7 @@ export default function App() {
                 </div>
                 <div className="h-0.5 bg-white/10 overflow-hidden">
                   <div 
-                    className="h-full bg-[#E63946] transition-all duration-1000 ease-out"
+                    className="h-full bg-[#FF6B00] transition-all duration-1000 ease-out"
                     style={{ width: `${(loadingStep + 1) * 25}%` }}
                   ></div>
                 </div>
@@ -644,7 +650,7 @@ export default function App() {
                       key={idx} 
                       className={`text-[10px] leading-relaxed transition-all duration-300 ${
                         idx === loadingStep 
-                          ? "text-[#E63946] font-bold" 
+                          ? "text-[#FF6B00] font-bold" 
                           : idx < loadingStep 
                           ? "opacity-40 line-through" 
                           : "opacity-20"
@@ -675,11 +681,11 @@ export default function App() {
                   onClick={() => setActiveTab("bucket")}
                   className={`py-2 text-[11px] font-bold tracking-wider uppercase text-center transition-all rounded-xs cursor-pointer flex items-center justify-center gap-1.5 ${
                     activeTab === "bucket"
-                      ? "bg-[#E63946] text-white font-black"
+                      ? "bg-[#FF6B00] text-white font-black"
                       : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A] hover:bg-[#1A1A1A]/5"
                   }`}
                 >
-                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className={`w-3.5 h-3.5 ${activeTab === "bucket" ? "fill-white text-white" : "fill-none text-[#1A1A1A]/60"}`} />
                   <span>내 버킷리스트 ({bucketList.length})</span>
                 </button>
               </div>
@@ -720,7 +726,7 @@ export default function App() {
             {!loading && activeTab === "search" && (
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between border-b border-[#1A1A1A]/10 pb-1.5">
-                  <span className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#E63946]">
+                  <span className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#FF6B00]">
                     SPATIAL DIGEST ({filteredPlaces.length})
                   </span>
                   <span className="text-[10px] font-mono opacity-50">LATEST INTEL</span>
@@ -758,7 +764,7 @@ export default function App() {
                                 className="hover:scale-110 active:scale-95 transition-transform cursor-pointer p-0.5 bg-transparent border-none"
                                 title={isSaved ? "버킷리스트에서 제거" : "버킷리스트에 추가"}
                               >
-                                <Star className={`w-3.5 h-3.5 ${isSaved ? "fill-[#E63946] text-[#E63946]" : "text-[#1A1A1A]/40 hover:text-[#E63946]"}`} />
+                                <Star className={`w-3.5 h-3.5 ${isSaved ? "fill-[#FF6B00] text-[#FF6B00]" : "fill-none text-[#1A1A1A]/40 hover:text-[#FF6B00]"}`} />
                               </button>
                             </div>
                           </div>
@@ -814,7 +820,7 @@ export default function App() {
             {!loading && activeTab === "bucket" && (
               <div className="space-y-5 pt-2">
                 <div className="flex items-center justify-between border-b border-[#1A1A1A]/10 pb-1.5">
-                  <span className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#E63946]">
+                  <span className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#FF6B00]">
                     MY BUCKET LIST ({bucketList.length})
                   </span>
                   <span className="text-[10px] font-mono opacity-50">SAVED HOTSPOTS</span>
@@ -956,7 +962,7 @@ export default function App() {
                           return (
                             <div key={region} className="space-y-3">
                               <div className="flex items-center gap-1.5 border-b border-[#1A1A1A]/10 pb-1 bg-[#1A1A1A]/5 px-2 py-1 rounded-xs">
-                                <MapPin className="w-3.5 h-3.5 text-[#E63946]" />
+                                <MapPin className="w-3.5 h-3.5 text-[#FF6B00]" />
                                 <span className="text-[11px] font-bold text-[#1A1A1A] tracking-wider uppercase">
                                   {region} 지역 ({regionPlaces.length})
                                 </span>
@@ -988,7 +994,7 @@ export default function App() {
                           return (
                             <div key={date} className="space-y-3">
                               <div className="flex items-center gap-1.5 border-b border-[#1A1A1A]/10 pb-1 bg-[#1A1A1A]/5 px-2 py-1 rounded-xs">
-                                <Calendar className="w-3.5 h-3.5 text-[#E63946]" />
+                                <Calendar className="w-3.5 h-3.5 text-[#FF6B00]" />
                                 <span className="text-[11px] font-bold text-[#1A1A1A] tracking-wider uppercase">
                                   {date} 저장 ({datePlaces.length})
                                 </span>
@@ -1041,7 +1047,7 @@ export default function App() {
                   </div>
                   <button 
                     onClick={() => setSelectedPlace(null)}
-                    className="text-[#1A1A1A]/50 hover:text-[#E63946] p-1 text-[11px] uppercase font-bold tracking-wider hover:underline cursor-pointer"
+                    className="text-[#1A1A1A]/50 hover:text-[#FF6B00] p-1 text-[11px] uppercase font-bold tracking-wider hover:underline cursor-pointer"
                   >
                     [ 상세 닫기 ]
                   </button>
@@ -1107,7 +1113,7 @@ export default function App() {
                   {/* Right Column: Media Analysis */}
                   <div className="space-y-2">
                     <span className="text-[11px] uppercase tracking-wider font-bold text-[#1A1A1A]/50 block">언론 보도 심층 분석</span>
-                    <div className="bg-[#E63946]/5 border-l-4 border-l-[#E63946] p-5 space-y-3 h-full rounded-r-sm">
+                    <div className="bg-[#FF6B00]/5 border-l-4 border-l-[#FF6B00] p-5 space-y-3 h-full rounded-r-sm">
                       <h4 className="text-sm font-bold font-serif text-[#1A1A1A] leading-snug">
                         "{selectedPlace.newsTitle}"
                       </h4>
@@ -1136,11 +1142,11 @@ export default function App() {
                     onClick={() => toggleBucketList(selectedPlace)}
                     className={`text-xs font-bold py-3.5 px-4 tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm rounded-sm cursor-pointer ${
                       bucketList.some(b => b.id === selectedPlace.id)
-                        ? "bg-[#E63946] hover:bg-[#d62836] text-white"
+                        ? "bg-[#FF6B00] hover:bg-[#e05e00] text-white"
                         : "border border-[#1A1A1A]/20 hover:border-[#1A1A1A] hover:bg-[#1A1A1A]/5 bg-white text-[#1A1A1A]"
                     }`}
                   >
-                    <Star className={`w-4 h-4 ${bucketList.some(b => b.id === selectedPlace.id) ? "fill-white text-white" : "text-[#1A1A1A]/60"}`} />
+                    <Star className={`w-4 h-4 ${bucketList.some(b => b.id === selectedPlace.id) ? "fill-white text-white" : "fill-none text-[#1A1A1A]/60"}`} />
                     <span>
                       {bucketList.some(b => b.id === selectedPlace.id)
                         ? "버킷리스트에서 제거"
@@ -1169,10 +1175,10 @@ export default function App() {
             <div className="flex-1 flex flex-col justify-center items-center p-8 text-center max-w-xl mx-auto space-y-6 z-10 relative">
               <div className="space-y-4">
                 <div className="inline-block border border-[#1A1A1A] px-3 py-1 text-[10px] uppercase tracking-[0.25em] font-bold text-[#1A1A1A]">
-                  Locus AI • 공간 탐색 지능
+                  Trended AI • 공간 탐색 지능
                 </div>
                 <h1 className="text-4xl sm:text-5xl font-serif font-black tracking-tight text-[#1A1A1A]">
-                  LOCUS JOURNAL
+                  TRENDED JOURNAL
                 </h1>
                 <p className="text-xs font-sans tracking-[0.15em] uppercase text-[#1A1A1A]/60 font-semibold">
                   NEWS-BASED SPATIAL DISCOVERY ENGINE
@@ -1186,7 +1192,7 @@ export default function App() {
               </p>
 
               <div className="border border-[#1A1A1A]/10 p-5 bg-[#FCFAF7]/80 rounded-sm w-full space-y-3.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#E63946] flex items-center justify-center gap-1.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B00] flex items-center justify-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>이용 가이드</span>
                 </p>
@@ -1212,8 +1218,8 @@ export default function App() {
 
       {/* 3. Bottom Ticker (The perfect marquee visual layout from design HTML) */}
       <footer className="h-12 bg-[#1A1A1A] text-white flex items-center px-6 sm:px-10 gap-8 overflow-hidden shrink-0 z-40 select-none" id="app-footer">
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] whitespace-nowrap text-[#E63946] flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#E63946] animate-ping inline-block mr-1"></span>
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] whitespace-nowrap text-[#FF6B00] flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] animate-ping inline-block mr-1"></span>
           Breaking Spatial Data:
         </div>
         <div className="flex gap-12 text-[11px] font-serif italic whitespace-nowrap opacity-80 animate-marquee hover:pause overflow-x-auto scrollbar-none scroll-smooth">
