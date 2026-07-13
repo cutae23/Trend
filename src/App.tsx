@@ -113,7 +113,13 @@ export default function App() {
     const parts = cleanAddr.split(/\s+/);
     if (parts.length > 0) {
       const firstPart = parts[0];
-      if (firstPart.startsWith("서울")) return "서울";
+      if (firstPart.startsWith("서울")) {
+        const guPart = parts[1];
+        if (guPart && (guPart.endsWith("구") || guPart.includes("구"))) {
+          return `서울 ${guPart}`;
+        }
+        return "서울";
+      }
       if (firstPart.startsWith("경기")) return "경기";
       if (firstPart.startsWith("인천")) return "인천";
       if (firstPart.startsWith("부산")) return "부산";
