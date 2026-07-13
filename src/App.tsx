@@ -251,9 +251,10 @@ export default function App() {
   const [mapCenter, setMapCenter] = useState({ lat: REGIONS[0].lat, lng: REGIONS[0].lng });
   const [mapZoom, setMapZoom] = useState(13);
 
-  // Load default Seoul data on mount
+  // Set default map view to Seoul on mount without fetching places
   useEffect(() => {
-    fetchPlaces(REGIONS[0].value, THEMES[0].suffix, "", true);
+    setMapCenter({ lat: REGIONS[0].lat, lng: REGIONS[0].lng });
+    setMapZoom(13);
   }, []);
 
   // Stagger loading messages for ultimate premium feel
@@ -515,7 +516,6 @@ export default function App() {
                         setCustomKeyword("");
                         setMapCenter({ lat: r.lat, lng: r.lng });
                         setMapZoom(13);
-                        fetchPlaces(r.value, selectedTheme.suffix, "");
                       }}
                       className={`text-xs text-left py-2 px-3 border transition-all duration-200 ${
                         selectedRegion.value === r.value && !customKeyword
@@ -539,7 +539,6 @@ export default function App() {
                       onClick={() => {
                         setSelectedTheme(theme);
                         setCustomKeyword("");
-                        fetchPlaces(selectedRegion.value, theme.suffix, "");
                       }}
                       className={`text-xs text-left py-2 px-3 border flex items-center justify-between transition-all duration-200 ${
                         selectedTheme.label === theme.label && !customKeyword
@@ -579,14 +578,13 @@ export default function App() {
 
               {/* Clickable Keyword Suggestions */}
               <div className="space-y-1.5 pt-0.5">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-[#1A1A1A]/40 block">추천 키워드 (클릭하여 빠른 검색)</span>
+                <span className="text-[9px] uppercase tracking-wider font-bold text-[#1A1A1A]/40 block">추천 키워드 (클릭하여 키워드 설정)</span>
                 <div className="flex flex-wrap gap-1">
                   {["소금빵", "흑돼지", "우동", "밀락더마켓", "서피비치", "흑임자라떼", "복국", "팝업스토어"].map((tag) => (
                     <button
                       key={tag}
                       onClick={() => {
                         setCustomKeyword(tag);
-                        fetchPlaces(selectedRegion.value, selectedTheme.suffix, tag);
                       }}
                       className="text-[10px] bg-white hover:bg-[#1A1A1A]/5 text-[#1A1A1A]/80 hover:text-[#1A1A1A] py-1 px-2 border border-[#1A1A1A]/10 rounded-sm transition-all cursor-pointer"
                     >
@@ -740,9 +738,13 @@ export default function App() {
 
                 {filteredPlaces.length === 0 ? (
                   <div className="text-center py-10 space-y-2 border border-dashed border-[#1A1A1A]/10 p-4">
-                    <p className="text-sm font-serif italic text-[#1A1A1A]/60">No matching places found</p>
+                    <p className="text-sm font-serif italic text-[#1A1A1A]/60">
+                      {places.length === 0 ? "No locations loaded yet" : "No matching places found"}
+                    </p>
                     <p className="text-[10px] text-[#1A1A1A]/40">
-                      다른 테마나 카테고리를 선택해 장소를 필터링해 보세요.
+                      {places.length === 0 
+                        ? "지역 및 테마를 선택한 후 하단의 'Extract Locations' 버튼을 클릭하여 뉴스를 추출하세요." 
+                        : "다른 테마나 카테고리를 선택해 장소를 필터링해 보세요."}
                     </p>
                   </div>
                 ) : (
