@@ -22,7 +22,6 @@ import {
   Calendar
 } from "lucide-react";
 import { NewsPlace, CategoryFilter, RegionOption } from "./types";
-import MapContainer from "./components/MapContainer";
 
 // Supported preset regions in South Korea with coordinates
 const REGIONS: RegionOption[] = [
@@ -1037,33 +1036,14 @@ export default function App() {
 
         </aside>
 
-        {/* Right Section: Interactive Editorial Board Panel & Map */}
+        {/* Right Section: Interactive Editorial Board Panel (Map Deleted) */}
         <section className="flex-1 bg-[#FCFAF7] relative overflow-hidden flex flex-col h-full min-h-0" id="editorial-details-panel">
           
-          {/* 1. Interactive Naver Map Integration */}
-          <div className="w-full h-[320px] sm:h-[40%] shrink-0 border-b border-[#1A1A1A]/10 relative z-20">
-            <MapContainer
-              places={activeTab === "search" ? filteredPlaces : getFilteredBucketList()}
-              selectedPlace={selectedPlace}
-              onSelectPlace={(place) => {
-                setSelectedPlace(place);
-                if (place) {
-                  setMapCenter({ lat: place.latitude, lng: place.longitude });
-                  setMapZoom(15);
-                }
-              }}
-              center={mapCenter}
-              zoom={mapZoom}
-            />
-          </div>
-
-          {/* 2. Scrollable Detail Board or Cover Index */}
-          <div className="flex-1 overflow-y-auto min-h-0 relative z-10 scrollbar-thin">
-            {/* Subtle Grid Backdrop for Editorial style */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(#1A1A1A 0.5px, transparent 0.5px)", backgroundSize: "20px 20px" }}></div>
-            
-            {selectedPlace ? (
-              <div className="p-6 sm:p-12 z-10 relative flex flex-col justify-between max-w-4xl mx-auto w-full space-y-8" id="details-block">
+          {/* Subtle Grid Backdrop for Editorial style */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(#1A1A1A 0.5px, transparent 0.5px)", backgroundSize: "20px 20px" }}></div>
+          
+          {selectedPlace ? (
+            <div className="flex-1 h-full p-6 sm:p-12 overflow-y-auto z-10 relative flex flex-col justify-between max-w-4xl mx-auto w-full space-y-8" id="details-block">
               <div className="space-y-8">
                 {/* Header/Category indicator */}
                 <div className="flex items-center justify-between pb-4 border-b border-[#1A1A1A]/10">
@@ -1241,7 +1221,6 @@ export default function App() {
               </div>
             </div>
           )}
-          </div>
         </section>
       </main>
 
