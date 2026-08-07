@@ -12,25 +12,22 @@ import {
   FileText,
   Key,
   X,
-  SlidersHorizontal
+  Globe,
+  HelpCircle,
+  CheckCircle2,
+  Lightbulb,
+  Award,
+  BookOpen,
+  AlertTriangle
 } from "lucide-react";
-import { NewsPlace, CategoryFilter } from "./types";
+import { NewsPlace } from "./types";
 import { MapView } from "./components/MapView";
 import { MediaProofCard } from "./components/MediaProofCard";
-
-// Popular instant search chips
-const QUICK_CHIPS = [
-  { label: "🎤 K-POP 성지", query: "K-POP 광야 서울" },
-  { label: "✨ 애니메이션 성지", query: "홍대 애니메이트" },
-  { label: "📍 서울 성수", query: "서울 성수동" },
-  { label: "🍿 팝업스토어", query: "성수동 팝업스토어" },
-  { label: "🎂 아이돌 생일카페", query: "홍대 생일카페" },
-  { label: "📍 부산 광안리", query: "부산 광안리" },
-  { label: "📍 제주 애월", query: "제주 애월읍" },
-  { label: "📍 전주 한옥마을", query: "전주 한옥마을" }
-];
+import { translations } from "./translations";
 
 export default function App() {
+  const t = translations;
+
   const [places, setPlaces] = useState<NewsPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<NewsPlace | null>(null);
   const [rightViewMode, setRightViewMode] = useState<"map" | "proof_card">("map");
@@ -38,7 +35,10 @@ export default function App() {
   // Main single search input
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Optional API Key state (hidden by default)
+  // Guide modal state
+  const [showGuideModal, setShowGuideModal] = useState(false);
+
+  // Optional API Key state
   const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem("locus_gemini_api_key") || "");
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(geminiApiKey);
@@ -72,16 +72,10 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState("");
   const [showProofModal, setShowProofModal] = useState(false);
   const [geminiWorking, setGeminiWorking] = useState<boolean | null>(null);
-  const [geminiStatusMsg, setGeminiStatusMsg] = useState<string>("");
 
   // Map state
   const [mapCenter, setMapCenter] = useState({ lat: 37.5450, lng: 127.0420 });
   const [mapZoom, setMapZoom] = useState(13);
-
-  // Initial state is idle (no automatic search)
-  useEffect(() => {
-    // Idle on initial load
-  }, []);
 
   const handleSearch = async (overrideQuery?: string) => {
     const targetQuery = (overrideQuery !== undefined ? overrideQuery : searchQuery).trim();
@@ -100,7 +94,8 @@ export default function App() {
         body: JSON.stringify({
           region: targetQuery,
           query: targetQuery,
-          customApiKey: geminiApiKey
+          customApiKey: geminiApiKey,
+          lang: "ko"
         })
       });
 
@@ -109,20 +104,27 @@ export default function App() {
       const data = await response.json();
       if (data.geminiWorking !== undefined) {
         setGeminiWorking(data.geminiWorking);
-        setGeminiStatusMsg(data.geminiMessage || "");
       }
 
-      if (data.success && data.places && data.places.length > 0) {
-        setPlaces(data.places);
-        setSelectedPlace(data.places[0]);
+      if (data.success) {
+        if (data.places && data.places.length > 0) {
+          setPlaces(data.places);
+          setSelectedPlace(data.places[0]);
 
-        const avgLat = data.places.reduce((sum: number, p: NewsPlace) => sum + p.latitude, 0) / data.places.length;
-        const avgLng = data.places.reduce((sum: number, p: NewsPlace) => sum + p.longitude, 0) / data.places.length;
-        setMapCenter({ lat: avgLat, lng: avgLng });
-        setMapZoom(13);
+          const avgLat = data.places.reduce((sum: number, p: NewsPlace) => sum + p.latitude, 0) / data.places.length;
+          const avgLng = data.places.reduce((sum: number, p: NewsPlace) => sum + p.longitude, 0) / data.places.length;
+          setMapCenter({ lat: avgLat, lng: avgLng });
+          setMapZoom(13);
+        } else {
+          setPlaces([]);
+          setSelectedPlace(null);
+        }
         setActiveTab("search");
+        setErrorMsg("");
       } else {
-        throw new Error("해당 지역의 보도검증 장소를 찾지 못했습니다.");
+        setPlaces([]);
+        setSelectedPlace(null);
+        setErrorMsg(data.message || "검색에 실패했습니다. 다시 시도해 주세요.");
       }
     } catch (err: any) {
       console.error(err);
@@ -142,7 +144,6 @@ export default function App() {
       setGeminiApiKey("");
     }
     setShowKeyModal(false);
-    // Auto re-search with the updated key
     setTimeout(() => {
       handleSearch();
     }, 100);
@@ -151,7 +152,7 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-[#FCFAF7] text-[#1A1A1A] font-sans overflow-hidden">
       
-      {/* 1. Insanely Simple Header Bar */}
+      {/* 1. Header Bar */}
       <header className="bg-white border-b border-[#1A1A1A]/10 px-4 sm:px-6 py-3 flex items-center justify-between gap-4 shrink-0 shadow-2xs">
         
         {/* Brand Logo */}
@@ -174,7 +175,7 @@ export default function App() {
           <div className="relative flex items-center">
             <input
               type="text"
-              placeholder="지역 또는 주제 검색 (예: K-POP 광야, 아이돌 생일카페, 홍대 애니메이트, 성수 팝업)"
+              placeholder={t.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -189,20 +190,20 @@ export default function App() {
               disabled={loading}
               className="absolute right-1 top-1 bottom-1 bg-[#1A1A1A] hover:bg-[#FF6B00] text-white text-[11px] font-bold px-3 transition-colors cursor-pointer rounded-xs flex items-center gap-1"
             >
-              {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <span>검색</span>}
+              {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <span>{t.searchBtn}</span>}
             </button>
           </div>
         </div>
 
-        {/* Optional Settings / Api Key Modal trigger */}
+        {/* Controls: API Key */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowKeyModal(true)}
-            className="p-2 border border-[#1A1A1A]/15 hover:border-[#1A1A1A] bg-[#FCFAF7] text-[10px] font-mono font-bold text-[#1A1A1A]/70 hover:text-[#1A1A1A] rounded-xs transition-all flex items-center gap-1"
-            title="Gemini API 설정 (선택 사항)"
+            className="p-2 border border-[#1A1A1A]/15 hover:border-[#1A1A1A] bg-[#FCFAF7] text-[10px] font-mono font-bold text-[#1A1A1A]/70 hover:text-[#1A1A1A] rounded-xs transition-all flex items-center gap-1 cursor-pointer"
+            title="Gemini API Key Settings"
           >
             <Key className="w-3.5 h-3.5 text-[#FF6B00]" />
-            <span className="hidden md:inline">{geminiApiKey ? "API 키 적용됨" : "설정"}</span>
+            <span className="hidden md:inline">{geminiApiKey ? "Key On" : t.apiKeyBtn}</span>
           </button>
         </div>
 
@@ -211,10 +212,10 @@ export default function App() {
       {/* Quick Search Chips Row */}
       <div className="bg-[#1A1A1A] text-white px-4 py-2 flex items-center gap-2 overflow-x-auto scrollbar-none text-xs shrink-0 select-none">
         <span className="text-[10px] font-mono text-[#FF6B00] font-bold shrink-0 uppercase tracking-wider">
-          FAST HOTSPOTS:
+          {t.fastHotspots}:
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
-          {QUICK_CHIPS.map((chip) => (
+          {t.quickChips.map((chip) => (
             <button
               key={chip.label}
               onClick={() => {
@@ -245,7 +246,7 @@ export default function App() {
                   : "text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
               }`}
             >
-              보도 검증 장소 ({places.length})
+              {t.verifiedTab(places.length)}
             </button>
 
             <button
@@ -257,13 +258,37 @@ export default function App() {
               }`}
             >
               <Star className="w-3.5 h-3.5" />
-              <span>저장목록 ({bucketList.length})</span>
+              <span>{t.savedTab(bucketList.length)}</span>
             </button>
           </div>
 
           {/* List Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             
+            {/* Guide Teaser Banner */}
+            {!loading && activeTab === "search" && (
+              <div 
+                onClick={() => setShowGuideModal(true)}
+                className="bg-gradient-to-r from-[#1A1A1A] to-[#2B2B2B] text-white p-3 rounded-xs border border-[#1A1A1A] shadow-xs cursor-pointer hover:border-[#FF6B00] transition-all flex items-center justify-between gap-2 group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-[#FF6B00] text-white rounded-xs flex items-center justify-center font-bold shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold flex items-center gap-1 group-hover:text-[#FF6B00] transition-colors">
+                      <span>{t.whyTitle}</span>
+                      <span className="text-[10px] text-[#FF6B00] bg-white/10 px-1.5 py-0.2 rounded-xs">INFO</span>
+                    </h4>
+                    <p className="text-[10px] text-white/70 line-clamp-1">
+                      광고 없는 100% 언론 검증 장점 및 이용 팁 보기 ↗
+                    </p>
+                  </div>
+                </div>
+                <BookOpen className="w-4 h-4 text-[#FF6B00] shrink-0" />
+              </div>
+            )}
+
             {loading && (
               <div className="py-12 text-center space-y-2">
                 <RefreshCw className="w-6 h-6 text-[#FF6B00] animate-spin mx-auto" />
@@ -280,7 +305,7 @@ export default function App() {
                   onClick={() => setShowKeyModal(true)}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-2 py-1 rounded-xs text-[10px] shrink-0"
                 >
-                  API Key 입력
+                  {t.apiKeyBtn}
                 </button>
               </div>
             )}
@@ -290,7 +315,7 @@ export default function App() {
                 <div className="flex items-center gap-2 overflow-hidden">
                   <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-[#FF6B00] shrink-0"></span>
                   <p className="text-[#1A1A1A]/90 text-[11px] font-medium truncate">
-                    스마트 로컬 검색 모드 작동 중 (개인 Gemini API Key 등록 시 실시간 AI 뉴스 연동 탐색)
+                    {t.smartSearchMode}
                   </p>
                 </div>
                 <button
@@ -300,7 +325,7 @@ export default function App() {
                   }}
                   className="bg-[#1A1A1A] hover:bg-[#FF6B00] text-white font-bold text-[10px] px-2.5 py-1 rounded-xs shrink-0 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  API Key 등록
+                  {t.apiKeyBtn}
                 </button>
               </div>
             )}
@@ -308,85 +333,96 @@ export default function App() {
             {!loading && activeTab === "search" && (
               <div className="space-y-3">
                 {places.length === 0 ? (
-                  <div className="text-center py-12 px-4 border-2 border-dashed border-[#1A1A1A]/20 bg-white rounded-xs space-y-3">
+                  <div className="text-center py-10 px-4 border-2 border-dashed border-[#1A1A1A]/20 bg-white rounded-xs space-y-3 shadow-2xs">
                     <div className="w-10 h-10 bg-[#FF6B00]/10 text-[#FF6B00] border border-[#FF6B00]/20 rounded-full flex items-center justify-center mx-auto">
                       <Search className="w-5 h-5" />
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-sm font-serif font-black text-[#1A1A1A]">
-                        검색어를 입력해보세요
+                        {searchQuery.trim() ? `'${searchQuery}' ${t.noPlacesTitle}` : t.noPlacesTitle}
                       </h4>
                       <p className="text-xs font-serif text-[#1A1A1A]/60 leading-relaxed">
-                        상단 검색창에 원하시는 지역(예: 대전, 부산, 제주, 여수)이나 핫플레이스를 입력하시면 언론 검증 장소를 탐색합니다.
+                        {t.noPlacesDesc}
                       </p>
                     </div>
+                    {searchQuery.trim() && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          handleSearch("");
+                        }}
+                        className="bg-[#1A1A1A] hover:bg-[#FF6B00] text-white text-[11px] font-bold px-3 py-1.5 rounded-xs transition-colors cursor-pointer"
+                      >
+                        전체 장소 보기
+                      </button>
+                    )}
                   </div>
                 ) : (
-                  places.map((place, idx) => {
-                  const isSelected = selectedPlace?.id === place.id;
-                  const isSaved = bucketList.some(b => b.id === place.id);
+                  places.map((place) => {
+                    const isSelected = selectedPlace?.id === place.id;
+                    const isSaved = bucketList.some(b => b.id === place.id);
 
-                  return (
-                    <div
-                      key={place.id}
-                      onClick={() => {
-                        setSelectedPlace(place);
-                        setMapCenter({ lat: place.latitude, lng: place.longitude });
-                        setMapZoom(15);
-                      }}
-                      className={`p-3.5 border transition-all cursor-pointer rounded-xs space-y-2 ${
-                        isSelected
-                          ? "bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0px_0px_#1A1A1A]"
-                          : "bg-white border-[#1A1A1A]/15 hover:border-[#1A1A1A]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-[10px] font-mono">
-                        <span className="bg-[#FF6B00] text-white font-bold px-1.5 py-0.2 rounded-xs">
-                          {place.category.toUpperCase()}
-                        </span>
-                        
-                        <div className="flex items-center gap-1 text-[#1A1A1A]/60">
-                          <span>{place.mediaBuzzScore || 95}% HOT</span>
+                    return (
+                      <div
+                        key={place.id}
+                        onClick={() => {
+                          setSelectedPlace(place);
+                          setMapCenter({ lat: place.latitude, lng: place.longitude });
+                          setMapZoom(15);
+                        }}
+                        className={`p-3.5 border transition-all cursor-pointer rounded-xs space-y-2 ${
+                          isSelected
+                            ? "bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0px_0px_#1A1A1A]"
+                            : "bg-white border-[#1A1A1A]/15 hover:border-[#1A1A1A]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[10px] font-mono">
+                          <span className="bg-[#FF6B00] text-white font-bold px-1.5 py-0.2 rounded-xs">
+                            {place.category.toUpperCase()}
+                          </span>
+                          
+                          <div className="flex items-center gap-1 text-[#1A1A1A]/60">
+                            <span>{place.mediaBuzzScore || 95}% HOT</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleBucketList(place);
+                              }}
+                              className="p-1 hover:scale-110 transition-transform"
+                            >
+                              <Star className={`w-4 h-4 ${isSaved ? "fill-[#FF6B00] text-[#FF6B00]" : "text-[#1A1A1A]/30"}`} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <h3 className="text-base font-serif font-black text-[#1A1A1A]">
+                          {place.name}
+                        </h3>
+
+                        <p className="text-xs font-serif italic text-[#1A1A1A]/80 line-clamp-2 leading-relaxed">
+                          "{place.newsTitle}"
+                        </p>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-[#1A1A1A]/10 text-[10px] font-mono">
+                          <span className="text-[#1A1A1A]/60 truncate max-w-[170px]">
+                            📍 {place.address}
+                          </span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleBucketList(place);
+                              setSelectedPlace(place);
+                              setMapCenter({ lat: place.latitude, lng: place.longitude });
+                              setRightViewMode("proof_card");
+                              setShowProofModal(true);
                             }}
-                            className="p-1 hover:scale-110 transition-transform"
+                            className="bg-[#FF6B00] hover:bg-[#1A1A1A] text-white font-bold px-2 py-1 rounded-xs transition-colors cursor-pointer flex items-center gap-1 text-[10px]"
                           >
-                            <Star className={`w-4 h-4 ${isSaved ? "fill-[#FF6B00] text-[#FF6B00]" : "text-[#1A1A1A]/30"}`} />
+                            <span>{t.proofCardBtn}</span>
                           </button>
                         </div>
                       </div>
-
-                      <h3 className="text-base font-serif font-black text-[#1A1A1A]">
-                        {place.name}
-                      </h3>
-
-                      <p className="text-xs font-serif italic text-[#1A1A1A]/80 line-clamp-2 leading-relaxed">
-                        "{place.newsTitle}"
-                      </p>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-[#1A1A1A]/10 text-[10px] font-mono">
-                        <span className="text-[#1A1A1A]/60 truncate max-w-[170px]">
-                          📍 {place.address}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPlace(place);
-                            setMapCenter({ lat: place.latitude, lng: place.longitude });
-                            setRightViewMode("proof_card");
-                            setShowProofModal(true);
-                          }}
-                          className="bg-[#FF6B00] hover:bg-[#1A1A1A] text-white font-bold px-2 py-1 rounded-xs transition-colors cursor-pointer flex items-center gap-1 text-[10px]"
-                        >
-                          <span>증명서 보기 📜</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                    );
+                  })
                 )}
               </div>
             )}
@@ -396,7 +432,8 @@ export default function App() {
                 {bucketList.length === 0 ? (
                   <div className="text-center py-10 border border-dashed border-[#1A1A1A]/20 p-4 rounded-xs space-y-1">
                     <Star className="w-5 h-5 text-[#1A1A1A]/30 mx-auto" />
-                    <p className="text-xs font-serif text-[#1A1A1A]/60">저장된 장소가 없습니다.</p>
+                    <p className="text-xs font-serif text-[#1A1A1A]/60">{t.noSavedTitle}</p>
+                    <p className="text-[10px] text-[#1A1A1A]/40">{t.noSavedDesc}</p>
                   </div>
                 ) : (
                   bucketList.map((place) => (
@@ -448,7 +485,7 @@ export default function App() {
                 }`}
               >
                 <MapIcon className="w-3.5 h-3.5" />
-                <span>지도</span>
+                <span>{t.mapViewBtn}</span>
               </button>
 
               <button
@@ -460,7 +497,7 @@ export default function App() {
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>언론 보도 증명서</span>
+                <span>{t.detailProofViewBtn}</span>
               </button>
             </div>
 
@@ -529,7 +566,7 @@ export default function App() {
             <div className="flex items-center justify-between border-b border-[#1A1A1A]/10 pb-3">
               <h3 className="text-base font-serif font-bold text-[#1A1A1A] flex items-center gap-1.5">
                 <Key className="w-4 h-4 text-[#FF6B00]" />
-                <span>Gemini API Key 설정 (선택 사항)</span>
+                <span>{t.apiKeyModalTitle}</span>
               </h3>
               <button onClick={() => setShowKeyModal(false)} className="p-1 hover:bg-[#1A1A1A]/5 cursor-pointer">
                 <X className="w-5 h-5 text-[#1A1A1A]" />
@@ -538,8 +575,7 @@ export default function App() {
 
             <div className="bg-[#FCFAF7] p-3.5 border border-[#1A1A1A]/10 rounded-xs space-y-2">
               <p className="text-xs text-[#1A1A1A]/85 leading-relaxed font-sans">
-                ⚠️ <strong>Gemini API가 작동하지 않는 경우:</strong><br />
-                Google AI Studio에서 무료로 발급받은 개인 Gemini API Key를 등록하시면 실시간 언론 보도검증 핫플레이스 탐색 기능이 즉시 100% 정상 작동합니다.
+                {t.apiKeyModalDesc}
               </p>
               <a
                 href="https://aistudio.google.com/app/apikey"
@@ -547,17 +583,17 @@ export default function App() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-xs font-bold text-[#FF6B00] hover:underline"
               >
-                <span>Google AI Studio 무료 API Key 발급받기 ↗</span>
+                <span>{t.getFreeKeyBtn}</span>
               </a>
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] uppercase font-mono font-bold text-[#1A1A1A]/60">
-                개인 Gemini API Key (선택 입력)
+                Gemini API Key
               </label>
               <input
                 type="password"
-                placeholder="AIzaSy... 키 입력"
+                placeholder={t.keyPlaceholder}
                 value={tempApiKey}
                 onChange={(e) => setTempApiKey(e.target.value)}
                 className="w-full text-xs bg-[#FCFAF7] border border-[#1A1A1A]/20 py-2 px-3 font-mono focus:outline-none focus:border-[#FF6B00]"
@@ -574,13 +610,145 @@ export default function App() {
                 }}
                 className="px-3 py-1.5 border border-[#1A1A1A]/20 text-xs font-bold text-[#1A1A1A]"
               >
-                초기화
+                {t.clearKeyBtn}
               </button>
               <button
                 onClick={handleSaveApiKey}
                 className="px-4 py-1.5 bg-[#1A1A1A] text-white text-xs font-bold hover:bg-[#FF6B00]"
               >
-                저장하기
+                {t.saveKeyBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Why & How Trended Guide Modal */}
+      {showGuideModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white border-2 border-[#1A1A1A] p-5 sm:p-6 max-w-2xl w-full my-auto space-y-5 shadow-[8px_8px_0px_0px_#1A1A1A] relative animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between border-b-2 border-[#1A1A1A] pb-3">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#FF6B00] text-white text-[10px] font-mono font-bold uppercase tracking-wider rounded-xs">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>100% PRESS VERIFIED</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-serif font-black text-[#1A1A1A]">
+                  {t.whyTitle}
+                </h3>
+                <p className="text-xs font-serif text-[#1A1A1A]/70">
+                  {t.whySubtitle}
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowGuideModal(false)} 
+                className="p-1 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] cursor-pointer rounded-xs"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Problem Statement Section */}
+            <div className="space-y-2 bg-[#FFF5F2] border border-[#FF6B00]/30 p-3.5 rounded-xs">
+              <h4 className="text-xs font-mono font-bold uppercase text-[#D32F2F] tracking-wider flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-[#D32F2F]" />
+                <span>{t.problemTitle}</span>
+              </h4>
+              <p className="text-xs font-serif text-[#1A1A1A]/80 leading-relaxed font-medium">
+                {t.problemDesc}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                <div className="bg-white/80 p-2 border border-[#FF6B00]/20 rounded-xs space-y-0.5">
+                  <span className="text-xs font-bold text-[#1A1A1A] block">{t.problemPoint1Title}</span>
+                  <span className="text-[10px] text-[#1A1A1A]/70 block leading-tight">{t.problemPoint1Desc}</span>
+                </div>
+                <div className="bg-white/80 p-2 border border-[#FF6B00]/20 rounded-xs space-y-0.5">
+                  <span className="text-xs font-bold text-[#1A1A1A] block">{t.problemPoint2Title}</span>
+                  <span className="text-[10px] text-[#1A1A1A]/70 block leading-tight">{t.problemPoint2Desc}</span>
+                </div>
+                <div className="bg-white/80 p-2 border border-[#FF6B00]/20 rounded-xs space-y-0.5">
+                  <span className="text-xs font-bold text-[#1A1A1A] block">{t.problemPoint3Title}</span>
+                  <span className="text-[10px] text-[#1A1A1A]/70 block leading-tight">{t.problemPoint3Desc}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Why Trended Section */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-mono font-bold uppercase text-[#FF6B00] tracking-wider flex items-center gap-1">
+                <Award className="w-3.5 h-3.5" />
+                <span>WHY TRENDED (차별화된 해결책 & 장점)</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="bg-[#FCFAF7] border border-[#1A1A1A]/20 p-3 rounded-xs space-y-1">
+                  <div className="w-7 h-7 bg-[#FF6B00]/10 text-[#FF6B00] rounded-xs flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <h5 className="text-xs font-bold text-[#1A1A1A]">{t.whyPoint1Title}</h5>
+                  <p className="text-[11px] text-[#1A1A1A]/70 leading-relaxed">{t.whyPoint1Desc}</p>
+                </div>
+
+                <div className="bg-[#FCFAF7] border border-[#1A1A1A]/20 p-3 rounded-xs space-y-1">
+                  <div className="w-7 h-7 bg-[#FF6B00]/10 text-[#FF6B00] rounded-xs flex items-center justify-center font-bold">
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <h5 className="text-xs font-bold text-[#1A1A1A]">{t.whyPoint2Title}</h5>
+                  <p className="text-[11px] text-[#1A1A1A]/70 leading-relaxed">{t.whyPoint2Desc}</p>
+                </div>
+
+                <div className="bg-[#FCFAF7] border border-[#1A1A1A]/20 p-3 rounded-xs space-y-1">
+                  <div className="w-7 h-7 bg-[#FF6B00]/10 text-[#FF6B00] rounded-xs flex items-center justify-center font-bold">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <h5 className="text-xs font-bold text-[#1A1A1A]">{t.whyPoint3Title}</h5>
+                  <p className="text-[11px] text-[#1A1A1A]/70 leading-relaxed">{t.whyPoint3Desc}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* How Trended Section */}
+            <div className="border-t border-[#1A1A1A]/10 pt-3 space-y-2.5">
+              <h4 className="text-xs font-mono font-bold uppercase text-[#1A1A1A] tracking-wider flex items-center gap-1">
+                <BookOpen className="w-3.5 h-3.5 text-[#FF6B00]" />
+                <span>{t.howTitle}</span>
+              </h4>
+
+              <div className="space-y-1.5 text-xs font-serif text-[#1A1A1A]/85">
+                <div className="flex items-start gap-2 bg-[#FCFAF7] p-2 border border-[#1A1A1A]/10 rounded-xs">
+                  <CheckCircle2 className="w-4 h-4 text-[#FF6B00] shrink-0 mt-0.5" />
+                  <span>{t.howStep1}</span>
+                </div>
+                <div className="flex items-start gap-2 bg-[#FCFAF7] p-2 border border-[#1A1A1A]/10 rounded-xs">
+                  <CheckCircle2 className="w-4 h-4 text-[#FF6B00] shrink-0 mt-0.5" />
+                  <span>{t.howStep2}</span>
+                </div>
+                <div className="flex items-start gap-2 bg-[#FCFAF7] p-2 border border-[#1A1A1A]/10 rounded-xs">
+                  <CheckCircle2 className="w-4 h-4 text-[#FF6B00] shrink-0 mt-0.5" />
+                  <span>{t.howStep3}</span>
+                </div>
+              </div>
+
+              {/* Pro Tip Box */}
+              <div className="bg-[#1A1A1A] text-white p-3 rounded-xs space-y-1 border border-[#1A1A1A]">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#FF6B00]">
+                  <Lightbulb className="w-4 h-4" />
+                  <span>{t.proTipTitle}</span>
+                </div>
+                <p className="text-[11px] text-white/80 leading-relaxed">
+                  {t.proTipDesc}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end border-t border-[#1A1A1A]/10 pt-2">
+              <button
+                onClick={() => setShowGuideModal(false)}
+                className="px-5 py-2 bg-[#1A1A1A] hover:bg-[#FF6B00] text-white text-xs font-bold rounded-xs transition-colors cursor-pointer"
+              >
+                {t.closeBtn}
               </button>
             </div>
           </div>

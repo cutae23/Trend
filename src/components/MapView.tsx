@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { NewsPlace } from '../types';
-import { MapPin, Navigation, Star, ExternalLink, Utensils, Coffee, Compass, Palette } from 'lucide-react';
+import { MapPin, Star } from 'lucide-react';
 
 interface MapViewProps {
   places: NewsPlace[];

@@ -350,6 +350,73 @@ const MOCK_NEWS_PLACES: Record<string, NewsPlace[]> = {
       publishDate: "2026-07-06",
       menuSummary: "최신 K-POP 오피셜 응원봉, 한정판 음반, 한류 굿즈"
     }
+  ],
+  "michelin": [
+    {
+      id: "m1",
+      name: "우래옥 (미슐랭 빕구르망 & 블루리본 3리본)",
+      category: "restaurant",
+      newsTitle: "[미슐랭 빕구르망 & 블루리본 3리본] 70년 전통 서울 대표 평양냉면 명가 '우래옥' 문전성시",
+      newsSummary: "미슐랭 가이드 빕구르망과 블루리본 서베이에 연속 등재된 대한민국 대표 평양냉면 성지로, 진한 순면과 육향 가득한 육수로 언론 미식 섹션 단골 보도 명소입니다.",
+      address: "서울특별시 중구 창경궁로 62-29",
+      latitude: 37.5682,
+      longitude: 126.9986,
+      url: "https://search.naver.com/search.naver?query=우래옥",
+      publishDate: "2026-07-11",
+      menuSummary: "평양순면 냉면, 육향 가득한 불고기, 육회"
+    },
+    {
+      id: "m2",
+      name: "금돼지식당 (미슐랭 빕구르망 & 블루리본)",
+      category: "restaurant",
+      newsTitle: "[미슐랭 빕구르망 & 블루리본 동시석권] 약수동 '금돼지식당', 글로벌 스타들의 삼겹살 성지",
+      newsSummary: "세계적인 미식 가이드 미슐랭 빕구르망과 블루리본 서베이를 동시 석권한 약수동 프리미엄 돼지고기 구이 전문점으로, 연일 긴 웨이팅을 자랑하는 대표 미식 명소입니다.",
+      address: "서울특별시 중구 다산로 149",
+      latitude: 37.5568,
+      longitude: 127.0108,
+      url: "https://search.naver.com/search.naver?query=금돼지식당",
+      publishDate: "2026-07-10",
+      menuSummary: "본삼겹, 눈꽃목살, 등목살, 통돼지 김치찌개"
+    },
+    {
+      id: "m3",
+      name: "황생가칼국수 (미슐랭 빕구르망 & 블루리본)",
+      category: "restaurant",
+      newsTitle: "[북촌 미슐랭 빕구르망] 사골 육수 칼국수 명가 '황생가칼국수', 전통과 미식의 가치 검증받아",
+      newsSummary: "미슐랭 빕구르망과 블루리본 서베이에 매년 빠짐없이 선정되는 삼청동 대표 맛집으로, 깊고 진한 사골 육수와 손수 빚은 왕만두로 국내외 언론의 높은 호평을 얻고 있습니다.",
+      address: "서울특별시 종로구 북촌로5길 78",
+      latitude: 37.5802,
+      longitude: 126.9818,
+      url: "https://search.naver.com/search.naver?query=황생가칼국수",
+      publishDate: "2026-07-09",
+      menuSummary: "사골칼국수, 정성 왕만두, 수육"
+    },
+    {
+      id: "m4",
+      name: "자하손만두 (미슐랭 빕구르망 & 블루리본)",
+      category: "restaurant",
+      newsTitle: "[부암동 미슐랭 빕구르망] 인왕산 자락 정갈한 만두 요리 '자하손만두', 미식 매체 추천 1순위",
+      newsSummary: "자연 본연의 담백한 맛과 기품 있는 한옥 뷰로 미슐랭 빕구르망 및 블루리본 서베이에 선정된 종로 부암동의 손만두 전문점입니다.",
+      address: "서울특별시 종로구 백석동길 12",
+      latitude: 37.5928,
+      longitude: 126.9662,
+      url: "https://search.naver.com/search.naver?query=자하손만두",
+      publishDate: "2026-07-08",
+      menuSummary: "떡만두국, 알록달록 만두전골, 탕평채"
+    },
+    {
+      id: "m5",
+      name: "옥동식 (미슐랭 빕구르망 서교동 본점)",
+      category: "restaurant",
+      newsTitle: "[미슐랭 빕구르망 & 글로벌 입소문] 서교동 돼지곰탕 '옥동식', 맑고 깊은 국물로 미식가 매료",
+      newsSummary: "뉴욕 미슐랭 가이드에도 소개되며 국경을 넘어 인정받는 합정/망원 인근 돼지곰탕 전문점으로, 단 100그릇 한정 맑고 깊은 양지 육수로 유명합니다.",
+      address: "서울특별시 마포구 포은로 44-1",
+      latitude: 37.5532,
+      longitude: 126.9122,
+      url: "https://search.naver.com/search.naver?query=옥동식",
+      publishDate: "2026-07-07",
+      menuSummary: "돼지곰탕, 수제 김치만두"
+    }
   ]
 };
 
@@ -378,7 +445,8 @@ function generateStableId(name: string, address: string): string {
 function generateDynamicMockPlaces(
   regionName: string,
   query: string,
-  category: string
+  category: string,
+  lang: string = "ko"
 ): NewsPlace[] {
   let baseLat = 37.5450;
   let baseLng = 127.0420;
@@ -467,9 +535,18 @@ function generateDynamicMockPlaces(
   const keyword = (query || "").trim();
   const isAnimeTopic = ["애니", "애니메이션", "피규어", "캐릭터", "굿즈", "콜라보", "덕후", "성지", "만화", "지브리", "디즈니", "가챠", "팝업"].some(w => searchString.includes(w) || keyword.includes(w));
   const isKpopTopic = ["kpop", "k-pop", "케이팝", "k팝", "아이돌", "생일카페", "생카", "포카", "포토카드", "하이브", "hybe", "광야", "kwangya", "bts", "세븐틴", "뉴진스", "에스파", "아이브", "응원봉", "음반", "덕질", "콘서트", "럭키드로우", "소속사"].some(w => searchString.includes(w) || keyword.includes(w));
+  const isGourmetGuideTopic = ["미슐랭", "미쉐린", "빕구르망", "블루리본", "michelin", "bib gourmand", "blue ribbon", "파인다이닝", "고메"].some(w => searchString.includes(w) || keyword.includes(w));
 
   const items: NewsPlace[] = [];
   const categories: ('restaurant' | 'cafe' | 'spot' | 'culture')[] = ['restaurant', 'cafe', 'spot', 'culture'];
+  
+  const michelinPlaces = [
+    { name: "미슐랭 빕구르망 & 블루리본 다이닝", menu: "숙성 자가제면 국수, 트러플 수제 만두, 특제 육수", category: "restaurant" as const },
+    { name: "블루리본 3리본 미식 오마카세", menu: "셰프 스페셜 한우 구이, 계절 해산물 코스", category: "restaurant" as const },
+    { name: "미쉐린 가이드 추천 디저트 아뜰리에", menu: "시그니처 바닐라 밀푀유, 피스타치오 파르페", category: "cafe" as const },
+    { name: "빕구르망 대표 평양냉면 명가", menu: "순면 평양냉면, 불고기, 녹두전", category: "restaurant" as const },
+    { name: "블루리본 인증 스페셜티 로스터리", menu: "싱글 오리진 핸드드립, 수제 에그타르트", category: "cafe" as const }
+  ];
   
   const animePlaces = [
     { name: "애니메이트 & 콜라보 스토어", menu: "한정판 애니 굿즈, 음료 특전 코스터, 아크릴 스탠드", category: "culture" as const },
@@ -506,7 +583,12 @@ function generateDynamicMockPlaces(
     let menu = "";
     let itemCat: 'restaurant' | 'cafe' | 'spot' | 'culture' = itemCategory;
     
-    if (isKpopTopic) {
+    if (isGourmetGuideTopic) {
+      const gItem = michelinPlaces[i % michelinPlaces.length];
+      name = `${regionLabel} ${keyword || "미슐랭 & 블루리본"} ${gItem.name}`;
+      menu = gItem.menu;
+      itemCat = gItem.category;
+    } else if (isKpopTopic) {
       const kpItem = kpopPlaces[i % kpopPlaces.length];
       name = `${regionLabel} ${keyword || "K-POP"} ${kpItem.name}`;
       menu = kpItem.menu;
@@ -540,7 +622,10 @@ function generateDynamicMockPlaces(
     let newsTitle = `[트렌드 브리핑] 최근 핫플레이스로 급부상한 ${regionLabel} '${keyword || "최신 화제의 장소"}' 집중 보도`;
     let newsSummary = `${regionLabel}에 새롭게 둥지를 튼 이곳은 언론 및 SNS에서 이색적인 테마와 독창적인 감성으로 가득한 필수 여행 코스로 화제를 모으고 있습니다.`;
 
-    if (isKpopTopic) {
+    if (isGourmetGuideTopic) {
+      newsTitle = `[미식 검증 보도] ${regionLabel} '${name}'... 미슐랭 빕구르망 & 블루리본 등재로 미식가들 집중 주목`;
+      newsSummary = `${regionLabel}에 위치한 이곳은 세계적인 미식 가이드 미슐랭 빕구르망과 블루리본 서베이에 연이어 등재되어 국내 주요 일간지 및 전문 미디어의 검증을 받은 대표 미식 명소입니다.`;
+    } else if (isKpopTopic) {
       newsTitle = `[K-POP 성지 리포트] ${regionLabel} '${name}'... 글로벌 K-POP 팬들과 팬덤으로 오픈런 열풍`;
       newsSummary = `${regionLabel}에 위치한 이곳은 K-POP 아티스트 공식 굿즈, 음반, 럭키드로우 및 생일카페 이벤트가 펼쳐져 수많은 글로벌 팬들의 대기열이 이어지는 대표 K-POP 명소입니다.`;
     } else if (isAnimeTopic) {
@@ -573,8 +658,8 @@ function generateDynamicMockPlaces(
   return items;
 }
 
-// Helper to search mock places intelligently before generating randomized ones
-function searchMockPlaces(region: string, query: string, category: string): NewsPlace[] {
+// Helper to search mock places intelligently
+function searchMockPlaces(region: string, query: string, category: string, lang: string = "ko"): NewsPlace[] {
   let allPlaces: NewsPlace[] = [];
   
   // Collect all mock places
@@ -586,78 +671,60 @@ function searchMockPlaces(region: string, query: string, category: string): News
   const cleanQuery = (query || "").toLowerCase().trim();
   const cleanCategory = (category || "").toLowerCase().trim();
   
-  // Filter by region if specified
-  let filtered = allPlaces;
-  if (cleanRegion) {
-    filtered = filtered.filter(p => {
-      const addr = p.address.toLowerCase();
-      const reg = cleanRegion.toLowerCase();
-      return addr.includes(reg) || 
-             reg.includes("seoul") && addr.includes("서울") || 
-             reg.includes("busan") && addr.includes("부산") || 
-             reg.includes("jeju") && addr.includes("제주") || 
-             reg.includes("gangwon") && addr.includes("강원");
-    });
-
-    // If region was specified but no static mock places exist for this region, DO NOT return places from other regions!
-    if (filtered.length === 0) {
-      return generateDynamicMockPlaces(region, query, category);
-    }
-  }
-  
   // Filter by category if specified and not "all"
+  let categoryFiltered = allPlaces;
   if (cleanCategory && cleanCategory !== "all") {
-    filtered = filtered.filter(p => p.category === cleanCategory);
+    categoryFiltered = categoryFiltered.filter(p => p.category === cleanCategory);
   }
-  
-  // Filter by query (keyword) if specified
-  if (cleanQuery) {
-    // Check if it's a generic theme query
-    const isThemeQuery = ["맛집", "핫플레이스", "카페", "디저트", "베이커리", "명소", "가볼만한곳", "관광", "전시", "체험", "팝업스토어", "복합문화공간"].some(w => cleanQuery.includes(w)) && cleanQuery.split(/\s+/).length > 1;
+
+  // If query and region are empty, return all default places
+  if (!cleanQuery && !cleanRegion) {
+    return categoryFiltered;
+  }
+
+  // Filter static places matching region or query keywords
+  const matched = categoryFiltered.filter(p => {
+    const text = `${p.name} ${p.address} ${p.menuSummary} ${p.newsTitle} ${p.newsSummary}`.toLowerCase();
     
-    if (!isThemeQuery) {
-      // Look for any match in fields
-      const matching = filtered.filter(p => {
-        return p.name.toLowerCase().includes(cleanQuery) ||
-               p.menuSummary.toLowerCase().includes(cleanQuery) ||
-               p.newsTitle.toLowerCase().includes(cleanQuery) ||
-               p.newsSummary.toLowerCase().includes(cleanQuery) ||
-               p.address.toLowerCase().includes(cleanQuery);
-      });
-      
-      if (matching.length > 0) {
-        return matching;
-      }
-      
-      // Try matching across all regions if nothing matched in current region
-      const matchingInAll = allPlaces.filter(p => {
-        return p.name.toLowerCase().includes(cleanQuery) ||
-               p.menuSummary.toLowerCase().includes(cleanQuery) ||
-               p.newsTitle.toLowerCase().includes(cleanQuery) ||
-               p.newsSummary.toLowerCase().includes(cleanQuery) ||
-               p.address.toLowerCase().includes(cleanQuery);
-      });
-      if (matchingInAll.length > 0) {
-        return matchingInAll;
-      }
+    if (cleanQuery) {
+      const qWords = cleanQuery.split(/\s+/).filter(Boolean);
+      const matchesQ = qWords.some(w => text.includes(w) || p.address.toLowerCase().includes(w));
+      if (!matchesQ) return false;
     }
+    
+    if (cleanRegion) {
+      const rWords = cleanRegion.split(/\s+/).filter(Boolean);
+      const matchesR = rWords.some(w => p.address.toLowerCase().includes(w) || text.includes(w));
+      if (!matchesR) return false;
+    }
+    
+    return true;
+  });
+
+  if (matched.length > 0) {
+    return matched;
   }
-  
-  // If no specific keyword mismatch, return filtered list by region
-  if (filtered.length > 0) {
-    return filtered;
+
+  // Loose matching if strict multi-word query had no match
+  if (cleanQuery) {
+    const loose = categoryFiltered.filter(p => {
+      const text = `${p.name} ${p.address} ${p.menuSummary} ${p.newsTitle} ${p.newsSummary}`.toLowerCase();
+      return text.includes(cleanQuery);
+    });
+    if (loose.length > 0) return loose;
   }
-  
-  // Default fallback
-  return generateDynamicMockPlaces(region, query, category);
+
+  // If nothing matched, return empty array [] (no search results)
+  return [];
 }
 
 // API Route to fetch places from news using Gemini Search Grounding
 app.post("/api/news-places", async (req, res) => {
-  const { query, region, category, customApiKey } = req.body;
+  const { query, region, category, customApiKey, lang = "ko" } = req.body;
   const clientApiKey = req.headers['x-gemini-key'] || customApiKey;
+  const isEn = lang === "en";
   
-  console.log(`Received request: query='${query}', region='${region}', category='${category}', hasCustomKey=${!!clientApiKey}`);
+  console.log(`Received request: query='${query}', region='${region}', category='${category}', lang='${lang}', hasCustomKey=${!!clientApiKey}`);
 
   // Determine which active AI client instance to use
   let activeAi = ai;
@@ -681,57 +748,60 @@ app.post("/api/news-places", async (req, res) => {
   }
 
   // Define full prompt depending on inputs
-  let searchQuery = "최근 1주간 대한민국 인기 뉴스 맛집";
+  let searchQuery = isEn ? "Top trending news spots in Korea over the past week" : "최근 1주간 대한민국 인기 뉴스 맛집";
   if (region && query) {
-    searchQuery = `최근 1주간 ${region} 지역의 ${query} 관련 인기 뉴스 장소 맛집 핫플레이스 명소`;
+    searchQuery = isEn ? `Top news trending places in ${region} regarding ${query} over the past week` : `최근 1주간 ${region} 지역의 ${query} 관련 인기 뉴스 장소 맛집 핫플레이스 명소`;
   } else if (region) {
-    searchQuery = `최근 1주간 ${region} 인기 뉴스 맛집 핫플레이스 여행지`;
+    searchQuery = isEn ? `Top news trending hotspots in ${region} over the past week` : `최근 1주간 ${region} 인기 뉴스 맛집 핫플레이스 여행지`;
   } else if (query) {
-    searchQuery = `최근 1주간 ${query} 인기 뉴스 장소 맛집 명소`;
+    searchQuery = isEn ? `Top news trending places regarding ${query} over the past week` : `최근 1주간 ${query} 인기 뉴스 장소 맛집 명소`;
   }
   if (category) {
     const categoryMap: Record<string, string> = {
-      "restaurant": "맛집 요리 식당 미식",
-      "cafe": "카페 빵집 디저트 베이커리",
-      "spot": "인기 명소 포토존 핫플레이스 가볼만한곳",
-      "culture": "전시 미술관 박물관 팝업스토어 복합문화공간"
+      "restaurant": isEn ? "gourmet dining restaurant" : "맛집 요리 식당 미식",
+      "cafe": isEn ? "cafe bakery dessert" : "카페 빵집 디저트 베이커리",
+      "spot": isEn ? "scenic spot photo zone attraction" : "인기 명소 포토존 핫플레이스 가볼만한곳",
+      "culture": isEn ? "culture exhibition pop-up store" : "전시 미술관 박물관 팝업스토어 복합문화공간"
     };
     searchQuery += ` (${categoryMap[category] || category})`;
   }
 
-  // Fallback check
-  const regionLower = (region || "").toLowerCase();
-  const matchedKey = Object.keys(MOCK_NEWS_PLACES).find(key => regionLower.includes(key) || key.includes(regionLower));
-  
   if (!activeAi) {
     console.log("Gemini SDK not initialized, returning status geminiWorking=false and search mock places for:", region || query || "default");
-    const dynamicPlaces = searchMockPlaces(region || "", query || "", category || "");
+    const dynamicPlaces = searchMockPlaces(region || "", query || "", category || "", lang);
     return res.json({ 
       success: true, 
       source: "dynamic_simulation",
       places: dynamicPlaces,
       geminiWorking: false,
       geminiStatus: "no_key",
-      geminiMessage: "Gemini API가 설정되지 않아 작동하지 않고 있습니다. 실시간 AI 장소 분석을 이용하시려면 Gemini API Key를 입력해 주세요."
+      geminiMessage: isEn
+        ? "Gemini API key is not configured. Displaying smart local search mode results."
+        : "Gemini API가 설정되지 않아 작동하지 않고 있습니다. 실시간 AI 장소 분석을 이용하시려면 Gemini API Key를 입력해 주세요."
     });
   }
 
   try {
     console.log(`Calling Gemini API (Search Grounding) with prompt: "${searchQuery}"${isCustomClient ? ' (Custom Key)' : ' (System Key)'}`);
     
-    const prompt = `
-      대한민국의 최근 1주간(현재 시점 2026년 7월경) 언론 및 뉴스 매체에서 큰 인기를 끌었거나 핫플레이스로 언급된 구체적인 장소(식당, 카페, 빵집, 복합문화공간, 관광명소 등)를 5개에서 최대 8개 추출해 주세요.
-      
-      반드시 다음 조건들을 지키며 검색 결과에 기반해 응답해 주세요:
-      1. 반드시 실제로 존재하는 대한민국 내의 구체적인 매장 상호명이나 장소명이어야 합니다.
-      2. 해당 장소가 언급된 구체적인 뉴스 보도 내용을 요약하여 'newsTitle'과 'newsSummary'에 적어주세요.
-      3. 실제 해당 매장/장소의 한국 도로명 또는 지번 주소('address')를 구체적으로 작성해 주세요. (예: 서울특별시 성동구 연무장길 56-1)
-      4. 해당 주소지의 정확한 위도('latitude')와 경도('longitude') 좌표값(예: 위도 37.xxxx, 경도 127.xxxx)을 정밀하게 계산 또는 추정해서 제공해 주세요. 지도에 실시간 마커로 배치할 것이므로 좌표가 한국 영토 내에 있어야 합니다.
-      5. 'category'는 'restaurant' (음식점), 'cafe' (카페/빵집/디저트), 'spot' (관광지/포토존/해변 등 야외 명소), 'culture' (미술관/전시관/팝업스토어 등 실내 복합 문화공간) 중 하나로 분류해 주세요.
-      6. 원래 뉴스 기사 출처 URL이나 네이버/구글 검색 결과를 확인할 수 있는 링크를 'url' 필드에 정확히 담아주세요.
-      7. 대표 메뉴 또는 주요 특징을 'menuSummary'에 담아주세요.
+    const langInstruction = isEn 
+      ? "IMPORTANT: Provide all text fields ('name', 'newsTitle', 'newsSummary', 'menuSummary') in English! Keep the 'address' readable with English street name or romanized Korean address."
+      : "모든 텍스트 필드('name', 'newsTitle', 'newsSummary', 'menuSummary', 'address')는 한국어로 작성해 주세요.";
 
-      검색 키워드: ${searchQuery}
+    const prompt = `
+      Extract 5 to 8 specific places (restaurants, cafes, bakery, pop-up stores, cultural spots, scenic places) in South Korea that have been widely featured in press or news media over the past week.
+      
+      Requirements:
+      1. Must be real existing physical locations in South Korea.
+      2. Summarize the news report for 'newsTitle' and 'newsSummary'.
+      3. Provide the full street address ('address').
+      4. Provide precise latitude ('latitude') and longitude ('longitude') coordinates inside South Korea (e.g. lat 37.xxxx, lng 127.xxxx).
+      5. 'category' must be one of: 'restaurant', 'cafe', 'spot', 'culture'.
+      6. Provide a valid news or map search link for 'url'.
+      7. Provide signature menu or highlights for 'menuSummary'.
+      8. ${langInstruction}
+
+      Search Query: ${searchQuery}
     `;
 
     let response;
@@ -934,8 +1004,8 @@ app.post("/api/news-places", async (req, res) => {
       if (matchedInRegion.length > 0) {
         processedPlaces = matchedInRegion;
       } else {
-        console.log(`[Region Guard] Returned places were outside requested region '${region}'. Switching to dynamic region generator.`);
-        processedPlaces = generateDynamicMockPlaces(region, query, category);
+        console.log(`[Region Guard] Returned places were outside requested region '${region}'. Returning empty result.`);
+        processedPlaces = [];
       }
     }
 

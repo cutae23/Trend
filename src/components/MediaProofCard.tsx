@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NewsPlace } from '../types';
+import { translations } from '../translations';
 import { 
   ShieldCheck, 
   Newspaper, 
@@ -8,17 +9,11 @@ import {
   Check, 
   ExternalLink, 
   Star, 
-  Calendar, 
   Award, 
   Sparkles, 
-  Utensils, 
-  Coffee, 
-  Compass, 
-  Palette,
   BarChart3,
   Tv,
-  FileText,
-  BookmarkCheck
+  FileText
 } from 'lucide-react';
 
 interface MediaProofCardProps {
@@ -35,6 +30,7 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
   isSavedInBucket
 }) => {
   const [copied, setCopied] = useState(false);
+  const t = translations;
 
   const handleCopyAddress = () => {
     navigator.clipboard.writeText(place.address);
@@ -77,7 +73,7 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
           onClick={onClose}
           className="text-[11px] font-mono uppercase font-bold text-[#1A1A1A]/60 hover:text-[#FF6B00] transition-colors cursor-pointer border border-[#1A1A1A]/20 px-2 py-1 hover:border-[#FF6B00]"
         >
-          [ 닫기 ESC ]
+          [ {t.closeBtn} ESC ]
         </button>
 
       </div>
@@ -90,7 +86,7 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
             <span>JOURNALISTIC SPATIAL FEATURE</span>
           </span>
           <span className="text-[10px] font-mono opacity-50">
-            보도 일자: {place.publishDate || "최근 1주일"}
+            {t.publishDate}: {place.publishDate || "최근 1주일"}
           </span>
         </div>
 
@@ -103,7 +99,7 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
           <div className="flex items-center justify-between text-xs font-bold font-sans">
             <span className="flex items-center gap-1.5 text-[#1A1A1A]">
               <BarChart3 className="w-4 h-4 text-[#FF6B00]" />
-              <span>언론 관심도 지수 (Media Buzz Index)</span>
+              <span>{t.mediaBuzzScore} (Media Buzz Index)</span>
             </span>
             <span className="text-[#FF6B00] font-mono font-black text-base">
               {buzzScore}% HOTSPOT
@@ -129,7 +125,7 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
         {/* Left: Press Headline & Summary Box */}
         <div className="bg-[#FF6B00]/5 border-l-4 border-l-[#FF6B00] p-4 space-y-3 rounded-r-sm">
           <span className="text-[10px] uppercase font-mono font-bold text-[#FF6B00] block">
-            보도 헤드라인 & 핵심 취재 내용
+            {t.newsSummaryTitle}
           </span>
           <h4 className="text-base font-serif font-bold text-[#1A1A1A] leading-snug">
             "{place.newsTitle}"
@@ -144,14 +140,14 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
           
           <div className="bg-white border border-[#1A1A1A]/10 p-4 rounded-sm space-y-2">
             <span className="text-[10px] uppercase font-mono font-bold text-[#1A1A1A]/50 block">
-              ✨ 대표 메뉴 & 공간 시그니처
+              ✨ {t.signatureMenu}
             </span>
             <p className="text-sm font-serif italic font-bold text-[#FF6B00]">
               {place.menuSummary}
             </p>
           </div>
 
-          <div className="bg-white border border-[#1A1A1A]/10 p-4 rounded-sm space-y-2">
+          <div className="bg-[#FCFAF7] border border-[#1A1A1A]/10 p-4 rounded-sm space-y-2">
             <span className="text-[10px] uppercase font-mono font-bold text-[#1A1A1A]/50 block">
               📍 정밀 주소 정보
             </span>
@@ -160,7 +156,7 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
             </p>
             <button
               onClick={handleCopyAddress}
-              className="w-full py-1.5 px-3 border border-[#1A1A1A]/20 hover:border-[#1A1A1A] bg-[#FCFAF7] text-[10px] font-bold uppercase tracking-wider text-[#1A1A1A] transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 rounded-xs hover:bg-[#1A1A1A]/5"
+              className="w-full py-1.5 px-3 border border-[#1A1A1A]/20 hover:border-[#1A1A1A] bg-white text-[10px] font-bold uppercase tracking-wider text-[#1A1A1A] transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 rounded-xs hover:bg-[#1A1A1A]/5"
             >
               {copied ? (
                 <>
@@ -202,7 +198,9 @@ export const MediaProofCard: React.FC<MediaProofCardProps> = ({
           }`}
         >
           <Star className={`w-4 h-4 ${isSavedInBucket ? "fill-white text-white" : "fill-none text-[#1A1A1A]/60"}`} />
-          <span>{isSavedInBucket ? "버킷리스트 저장됨" : "버킷리스트에 추가"}</span>
+          <span>
+            {isSavedInBucket ? "버킷리스트 저장됨" : "버킷리스트에 추가"}
+          </span>
         </button>
 
         <a
